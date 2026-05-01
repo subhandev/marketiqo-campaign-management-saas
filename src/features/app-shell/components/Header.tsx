@@ -1,15 +1,47 @@
 "use client";
 
-import { Menu, Search, Bell, HelpCircle, ChevronDown } from "lucide-react";
+import {
+  Search,
+  Bell,
+  HelpCircle,
+  ChevronDown,
+  LogOut,
+  User,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useClerk, useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 export function Header() {
+  const { signOut } = useClerk();
+  const { user } = useUser();
+  const router = useRouter();
+
+  const fullName = user?.fullName ?? user?.username ?? "User";
+  const initials = fullName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  const handleSignOut = async () => {
+    await signOut({ redirectUrl: "/sign-in" });
+  };
+
   return (
     <header className="h-14 border-b bg-background flex items-center justify-between pr-4 pl-14">
       {/* LEFT */}
       <div className="flex items-center gap-3 w-full max-w-md">
-        {/* Search */}
         <div className="relative w-full">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -31,19 +63,51 @@ export function Header() {
           <HelpCircle className="h-5 w-5" />
         </Button>
 
-        {/* User */}
-        <div className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted cursor-pointer">
-          <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-            S
-          </div>
+        {/* User Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted cursor-pointer">
+              <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                {initials}
+              </div>
+              <div className="hidden sm:flex flex-col leading-tight">
+                <span className="text-sm font-medium tracking-tight">
+                  {fullName}
+                </span>
+                <span className="text-xs text-muted-foreground">Admin</span>
+              </div>
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </DropdownMenuTrigger>
 
-          <div className="hidden sm:flex flex-col leading-tight">
-            <span className="text-sm font-medium tracking-tight">Subhan</span>
-            <span className="text-xs text-muted-foreground">Admin</span>
-          </div>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col gap-0.5">
+                <span className="font-medium text-sm">{fullName}</span>
+                <span className="text-xs text-muted-foreground truncate">
+                  {user?.primaryEmailAddress?.emailAddress}
+                </span>
+              </div>
+            </DropdownMenuLabel>
 
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        </div>
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem>
+              <User className="mr-2 h-4 w-4" />
+              Profile
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem
+              onClick={handleSignOut}
+              className="text-destructive focus:text-destructive cursor-pointer"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
