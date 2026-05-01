@@ -13,6 +13,8 @@ An AI-powered SaaS tool to analyze marketing campaign performance and generate a
 * Prisma ORM
 * OpenAI API
 * Clerk (Authentication: Email, Google, Apple)
+* RHF
+* Zod
 
 ---
 

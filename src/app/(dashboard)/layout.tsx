@@ -1,3 +1,5 @@
+// src/app/(dashboard)/layout.tsx
+
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { prisma } from '@/server/db/client'
 import {AppLayout} from '@/features/app-shell/AppLayout'

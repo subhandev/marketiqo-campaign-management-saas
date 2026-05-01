@@ -1,3 +1,9 @@
+// src/features/app-shell/components/Sidebar.tsx
+
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -11,27 +17,33 @@ import {
   Plug,
   Settings,
 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 
 const mainNav = [
-  { label: "Dashboard", icon: LayoutDashboard, active: true },
-  { label: "Clients", icon: Users },
-  { label: "Campaigns", icon: Megaphone },
-  { label: "Tasks", icon: CheckSquare },
-  { label: "Calendar", icon: Calendar },
-  { label: "Reports", icon: BarChart3 },
-  { label: "AI Reports", icon: Sparkles },
+  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "Clients", icon: Users, href: "/clients" },
+  { label: "Campaigns", icon: Megaphone, href: "/campaigns" },
+  { label: "Tasks", icon: CheckSquare, href: "/tasks" },
+  { label: "Calendar", icon: Calendar, href: "/calendar" },
+  { label: "Reports", icon: BarChart3, href: "/reports" },
+  { label: "AI Reports", icon: Sparkles, href: "/ai-reports" },
 ];
 
 const managementNav = [
-  { label: "Team", icon: Users2 },
-  { label: "Documents", icon: FileText },
-  { label: "Integrations", icon: Plug },
-  { label: "Settings", icon: Settings },
+  { label: "Team", icon: Users2, href: "/team" },
+  { label: "Documents", icon: FileText, href: "/documents" },
+  { label: "Integrations", icon: Plug, href: "/integrations" },
+  { label: "Settings", icon: Settings, href: "/settings" },
 ];
 
 export function Sidebar({ collapsed }: { collapsed?: boolean }) {
+  const pathname = usePathname();
+
+  const isActive = (href: string) => {
+    if (href === "/dashboard") return pathname === "/dashboard";
+    return pathname.startsWith(href);
+  };
+
   return (
     <aside
       className={`
@@ -41,11 +53,7 @@ export function Sidebar({ collapsed }: { collapsed?: boolean }) {
       `}
     >
       {/* Logo */}
-      <div
-        className={`mb-6 ${
-          collapsed ? "flex justify-center" : "px-2"
-        }`}
-      >
+      <div className={`mb-6 ${collapsed ? "flex justify-center" : "px-2"}`}>
         {!collapsed ? (
           <h2 className="text-sm font-semibold tracking-tight">
             AI Campaign Tracker
@@ -63,27 +71,25 @@ export function Sidebar({ collapsed }: { collapsed?: boolean }) {
         <div className="space-y-1">
           {mainNav.map((item) => {
             const Icon = item.icon;
+            const active = isActive(item.href);
             return (
-              <div
+              <Link
                 key={item.label}
+                href={item.href}
                 className={`
-                  flex items-center px-3 py-2 rounded-lg cursor-pointer transition-all
+                  flex items-center px-3 py-2 rounded-lg transition-all
                   text-sm font-normal leading-5 tracking-tight
                   ${collapsed ? "justify-center" : "gap-2"}
                   ${
-                    item.active
+                    active
                       ? "bg-muted text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent"
                   }
                 `}
               >
-                <Icon
-                  className={`h-4 w-4 ${
-                    item.active ? "text-primary" : ""
-                  }`}
-                />
+                <Icon className={`h-4 w-4 ${active ? "text-primary" : ""}`} />
                 {!collapsed && item.label}
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -98,22 +104,27 @@ export function Sidebar({ collapsed }: { collapsed?: boolean }) {
               Management
             </div>
           )}
-
           {managementNav.map((item) => {
             const Icon = item.icon;
+            const active = isActive(item.href);
             return (
-              <div
+              <Link
                 key={item.label}
+                href={item.href}
                 className={`
-                  flex items-center px-3 py-2 rounded-lg cursor-pointer transition-all
+                  flex items-center px-3 py-2 rounded-lg transition-all
                   text-sm font-normal leading-5 tracking-tight
                   ${collapsed ? "justify-center" : "gap-2"}
-                  text-muted-foreground hover:text-foreground hover:bg-accent
+                  ${
+                    active
+                      ? "bg-muted text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  }
                 `}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className={`h-4 w-4 ${active ? "text-primary" : ""}`} />
                 {!collapsed && item.label}
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -123,13 +134,10 @@ export function Sidebar({ collapsed }: { collapsed?: boolean }) {
       <div className="mt-auto pt-6">
         {!collapsed ? (
           <div className="rounded-lg border border-sidebar-border p-4 space-y-2 bg-muted/40">
-            <p className="text-sm font-medium tracking-tight">
-              Upgrade to Pro
-            </p>
+            <p className="text-sm font-medium tracking-tight">Upgrade to Pro</p>
             <p className="text-xs text-muted-foreground leading-5">
               Unlock advanced insights and reports
             </p>
-
             <Button size="sm" className="w-full">
               Upgrade Now
             </Button>

@@ -1,3 +1,5 @@
+// src/features/app-shell/AppLayout.tsx
+
 'use client'
 
 import { useState } from 'react'
@@ -17,7 +19,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main */}
       <div className="flex-1 flex flex-col">
         <Header />
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 overflow-auto p-8">{children}</main>
       </div>
 
       {/* Toggle (IMPORTANT: here, not in header/sidebar) */}

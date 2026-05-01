@@ -6,44 +6,6 @@ datasource db {
   provider = "postgresql"
 }
 
-model Campaign {
-  id          String   @id @default(cuid())
-  name        String
-  platform    String   // Meta, Google, etc.
-  status      String   // active, paused
-  startDate   DateTime?
-  endDate     DateTime?
-  createdAt   DateTime @default(now())
-
-  metrics     Metric[]
-  insights    Insight[]
-}
-
-model Metric {
-  id          String   @id @default(cuid())
-  campaignId  String
-  campaign    Campaign @relation(fields: [campaignId], references: [id])
-
-  impressions Int
-  clicks      Int
-  spend       Float
-  conversions Int?
-
-  date        DateTime
-}
-
-model Insight {
-  id          String   @id @default(cuid())
-  campaignId  String
-  campaign    Campaign @relation(fields: [campaignId], references: [id])
-
-  type        String   // performance, recommendation, anomaly
-  content     String   // AI-generated text
-  score       Float?   // optional confidence
-
-  createdAt   DateTime @default(now())
-}
-
 model User {
   id          String      @id @default(cuid())
   clerkUserId String      @unique
@@ -59,4 +21,63 @@ model Workspace {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+
+  clients   Client[]
+}
+
+model Client {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  name        String
+  company     String?
+  industry    String?
+  email       String?
+  notes       String?
+  status      String    @default("active") // active, inactive
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  campaigns   Campaign[]
+}
+
+model Campaign {
+  id          String    @id @default(cuid())
+  clientId    String
+  client      Client    @relation(fields: [clientId], references: [id])
+
+  name        String
+  platform    String
+  status      String
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime  @default(now())
+
+  metrics     Metric[]
+  insights    Insight[]
+}
+
+model Metric {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id])
+
+  impressions Int
+  clicks      Int
+  spend       Float
+  conversions Int?
+  date        DateTime
+}
+
+model Insight {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id])
+
+  type        String
+  content     String
+  score       Float?
+  createdAt   DateTime @default(now())
 }
