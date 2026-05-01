@@ -19,8 +19,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main */}
       <div className="flex-1 flex flex-col">
         <Header />
-        <main className="flex-1 overflow-auto p-6 bg-muted/40">
-        {children}</main>
+        <main className="flex-1 overflow-auto p-6">
+          {children}
+        </main>
       </div>
 
       {/* Toggle (IMPORTANT: here, not in header/sidebar) */}

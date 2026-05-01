@@ -1,3 +1,5 @@
+// src/features/clients/components/CreateClientForm.tsx
+
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -78,7 +80,7 @@ export function CreateClientForm() {
     <form onSubmit={handleSubmit(onSubmit)}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
 
-        {/* Form — no card, sits on muted bg */}
+        {/* Form */}
         <div className="lg:col-span-2 space-y-6">
 
           {/* Client Name */}
@@ -109,7 +111,7 @@ export function CreateClientForm() {
             )}
           </div>
 
-          {/* Industry + Email — side by side */}
+          {/* Industry + Email side by side */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Industry</Label>
@@ -191,18 +193,15 @@ export function CreateClientForm() {
         </div>
 
         {/* Preview Panel */}
-        <div className="hidden lg:flex flex-col gap-3">
+        <div className="hidden lg:flex flex-col gap-3 pt-8">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Preview
           </p>
 
-          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-            {/* Top accent strip */}
-            <div className="h-1.5 w-full bg-primary/60" />
-
+          <div className="rounded-xl border bg-zinc-50 border-zinc-200 shadow-sm  overflow-hidden">
             <div className="p-6 space-y-5">
               {/* Avatar + Name */}
-              <div className="flex flex-col items-center gap-3 pb-5 border-b border-border">
+              <div className="flex flex-col items-center gap-3 pb-5 border-b border-primary/10">
                 <div className="h-16 w-16 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold">
                   {initials}
                 </div>
@@ -210,9 +209,13 @@ export function CreateClientForm() {
                   <p className="text-base font-bold">
                     {watched.name || "Client Name"}
                   </p>
-                  {watched.industry && (
-                    <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full inline-block font-medium">
+                  {watched.industry ? (
+                    <span className="text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-full inline-block font-medium">
                       {watched.industry}
+                    </span>
+                  ) : (
+                    <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full inline-block font-medium">
+                      No industry
                     </span>
                   )}
                 </div>
