@@ -29,6 +29,10 @@ export async function getCampaignById(id: string, workspaceId: string) {
         orderBy: { createdAt: "desc" },
         take: 5,
       },
+      metrics: {
+        orderBy: { date: "desc" },
+        take: 1,
+      },
     },
   });
 }

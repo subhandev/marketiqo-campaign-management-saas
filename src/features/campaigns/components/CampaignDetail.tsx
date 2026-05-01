@@ -44,36 +44,44 @@ interface CampaignDetailProps {
 }
 
 const statusStyles: Record<CampaignStatus, string> = {
-  planned:   "bg-blue-50 text-blue-700 border-blue-200",
-  active:    "bg-green-50 text-green-700 border-green-200",
-  at_risk:   "bg-orange-50 text-orange-700 border-orange-200",
+  planned: "bg-blue-50 text-blue-700 border-blue-200",
+  active: "bg-green-50 text-green-700 border-green-200",
+  at_risk: "bg-orange-50 text-orange-700 border-orange-200",
   completed: "bg-zinc-100 text-zinc-500 border-zinc-200",
-  archived:  "bg-zinc-100 text-zinc-400 border-zinc-200",
+  archived: "bg-zinc-100 text-zinc-400 border-zinc-200",
 };
 
 const statusLabel: Record<CampaignStatus, string> = {
-  planned:   "Planned",
-  active:    "Active",
-  at_risk:   "At Risk",
+  planned: "Planned",
+  active: "Active",
+  at_risk: "At Risk",
   completed: "Completed",
-  archived:  "Archived",
+  archived: "Archived",
 };
 
 const insightIcon = (type: string) => {
   switch (type) {
-    case "risk":           return <AlertTriangle className="h-4 w-4 text-orange-500" />;
-    case "performance":    return <TrendingUp className="h-4 w-4 text-green-500" />;
-    case "recommendation": return <Lightbulb className="h-4 w-4 text-blue-500" />;
-    default:               return <CheckCircle className="h-4 w-4 text-primary" />;
+    case "risk":
+      return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+    case "performance":
+      return <TrendingUp className="h-4 w-4 text-green-500" />;
+    case "recommendation":
+      return <Lightbulb className="h-4 w-4 text-blue-500" />;
+    default:
+      return <CheckCircle className="h-4 w-4 text-primary" />;
   }
 };
 
 const insightCardStyle = (type: string) => {
   switch (type) {
-    case "risk":           return "border-orange-200 bg-orange-50/50";
-    case "performance":    return "border-green-200 bg-green-50/50";
-    case "recommendation": return "border-blue-200 bg-blue-50/50";
-    default:               return "border-border bg-background";
+    case "risk":
+      return "border-orange-200 bg-orange-50/50";
+    case "performance":
+      return "border-green-200 bg-green-50/50";
+    case "recommendation":
+      return "border-blue-200 bg-blue-50/50";
+    default:
+      return "border-border bg-background";
   }
 };
 
@@ -105,7 +113,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
       setInsights(data.insights);
     } catch (err) {
       setInsightError(
-        err instanceof Error ? err.message : "Something went wrong"
+        err instanceof Error ? err.message : "Something went wrong",
       );
     } finally {
       setGeneratingInsights(false);
@@ -127,7 +135,6 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
 
   return (
     <div className="space-y-6 max-w-6xl">
-
       {/* Back */}
       <button
         onClick={() => router.push("/campaigns")}
@@ -149,7 +156,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
             <span
               className={cn(
                 "text-xs px-2.5 py-1 rounded-full font-medium border",
-                statusStyles[campaign.status]
+                statusStyles[campaign.status],
               )}
             >
               {statusLabel[campaign.status]}
@@ -248,37 +255,48 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="mt-6 space-y-6">
-
           {/* Metric Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               {
                 label: "Total Spend",
-                value: "$0",
+                value: campaign.metrics?.[0]
+                  ? `$${campaign.metrics[0].spend.toLocaleString()}`
+                  : "$0",
                 icon: DollarSign,
                 color: "text-blue-600",
                 bg: "bg-blue-50",
+                hasData: !!campaign.metrics?.[0],
               },
               {
                 label: "Impressions",
-                value: "0",
+                value: campaign.metrics?.[0]
+                  ? campaign.metrics[0].impressions.toLocaleString()
+                  : "0",
                 icon: TrendingUp,
                 color: "text-purple-600",
                 bg: "bg-purple-50",
+                hasData: !!campaign.metrics?.[0],
               },
               {
                 label: "Clicks",
-                value: "0",
+                value: campaign.metrics?.[0]
+                  ? campaign.metrics[0].clicks.toLocaleString()
+                  : "0",
                 icon: MousePointer,
                 color: "text-green-600",
                 bg: "bg-green-50",
+                hasData: !!campaign.metrics?.[0],
               },
               {
                 label: "Conversions",
-                value: "0",
+                value: campaign.metrics?.[0]
+                  ? (campaign.metrics[0].conversions ?? 0).toLocaleString()
+                  : "0",
                 icon: ShoppingCart,
                 color: "text-orange-600",
                 bg: "bg-orange-50",
+                hasData: !!campaign.metrics?.[0],
               },
             ].map((metric) => (
               <div
@@ -292,7 +310,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                   <div
                     className={cn(
                       "h-8 w-8 rounded-lg flex items-center justify-center",
-                      metric.bg
+                      metric.bg,
                     )}
                   >
                     <metric.icon className={cn("h-4 w-4", metric.color)} />
@@ -300,7 +318,9 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                 </div>
                 <p className="text-2xl font-bold">{metric.value}</p>
                 <p className="text-xs text-muted-foreground">
-                  No data yet — add metrics to track performance
+                  {metric.hasData
+                    ? `As of ${new Date(campaign.metrics![0].date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                    : "No data yet — add metrics to track"}
                 </p>
               </div>
             ))}
@@ -308,7 +328,6 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
 
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
             {/* Campaign Info */}
             <div className="lg:col-span-2 space-y-4">
               <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
@@ -323,7 +342,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                       value: campaign.startDate
                         ? new Date(campaign.startDate).toLocaleDateString(
                             "en-US",
-                            { month: "short", day: "numeric", year: "numeric" }
+                            { month: "short", day: "numeric", year: "numeric" },
                           )
                         : null,
                     },
@@ -332,7 +351,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                       value: campaign.endDate
                         ? new Date(campaign.endDate).toLocaleDateString(
                             "en-US",
-                            { month: "short", day: "numeric", year: "numeric" }
+                            { month: "short", day: "numeric", year: "numeric" },
                           )
                         : null,
                     },
@@ -341,7 +360,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                       value: campaign.deadline
                         ? new Date(campaign.deadline).toLocaleDateString(
                             "en-US",
-                            { month: "short", day: "numeric", year: "numeric" }
+                            { month: "short", day: "numeric", year: "numeric" },
                           )
                         : null,
                     },
@@ -354,7 +373,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                       label: "Created",
                       value: new Date(campaign.createdAt).toLocaleDateString(
                         "en-US",
-                        { month: "short", day: "numeric", year: "numeric" }
+                        { month: "short", day: "numeric", year: "numeric" },
                       ),
                     },
                   ].map((item) => (
@@ -423,7 +442,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                           key={insight.id}
                           className={cn(
                             "p-3 rounded-lg border space-y-1",
-                            insightCardStyle(insight.type)
+                            insightCardStyle(insight.type),
                           )}
                         >
                           <div className="flex items-center gap-2">
@@ -445,7 +464,8 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                     <div className="space-y-1">
                       <p className="text-sm font-medium">No insights yet</p>
                       <p className="text-xs text-muted-foreground">
-                        Click generate to get AI-powered analysis and recommendations.
+                        Click generate to get AI-powered analysis and
+                        recommendations.
                       </p>
                     </div>
                     <Button
@@ -461,7 +481,6 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                 )}
               </div>
             </div>
-
           </div>
         </TabsContent>
 
@@ -479,7 +498,9 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
               />
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
-                  {notesSaved ? "✓ Saved" : "Changes are not saved automatically"}
+                  {notesSaved
+                    ? "✓ Saved"
+                    : "Changes are not saved automatically"}
                 </p>
                 <Button
                   size="sm"
@@ -501,12 +522,11 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
             </div>
             <p className="text-sm font-medium">AI Reports coming soon</p>
             <p className="text-xs text-muted-foreground max-w-sm">
-              Generate comprehensive AI-powered reports with performance analysis,
-              recommendations and forecasts.
+              Generate comprehensive AI-powered reports with performance
+              analysis, recommendations and forecasts.
             </p>
           </div>
         </TabsContent>
-
       </Tabs>
     </div>
   );

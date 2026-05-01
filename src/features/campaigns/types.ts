@@ -1,5 +1,24 @@
 export type CampaignStatus = "planned" | "active" | "at_risk" | "completed" | "archived";
 
+export type Metric = {
+  id: string;
+  campaignId: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  conversions: number | null;
+  date: string;
+};
+
+export type Insight = {
+  id: string;
+  campaignId: string;
+  type: string;
+  content: string;
+  score: number | null;
+  createdAt: string;
+};
+
 export type Campaign = {
   id: string;
   clientId: string;
@@ -18,6 +37,8 @@ export type Campaign = {
     name: string;
     industry: string | null;
   };
+  metrics?: Metric[];
+  insights?: Insight[];
 };
 
 export type CreateCampaignInput = {
