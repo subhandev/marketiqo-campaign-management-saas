@@ -1,29 +1,28 @@
-import {
-  handleCreateCampaign,
-  handleGetCampaigns,
-} from '@/server/campaigns/campaigns.handler'
+import { NextRequest } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { prisma } from "@/server/db/client";
+import { handleListCampaigns, handleCreateCampaign } from "@/server/campaigns/campaigns.handler";
 
-export async function GET() {
-  const result = await handleGetCampaigns()
-
-  return new Response(JSON.stringify(result.body), {
-    status: result.status,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  })
+async function getWorkspaceId(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { clerkUserId: userId },
+    include: { workspaces: { take: 1 } },
+  });
+  return user?.workspaces[0]?.id ?? null;
 }
 
-// POST campaign
-export async function POST(req: Request) {
-  const body = await req.json()
+export async function GET(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+  const workspaceId = await getWorkspaceId(userId);
+  if (!workspaceId) return new Response(JSON.stringify({ error: "Workspace not found" }), { status: 404 });
+  return handleListCampaigns(workspaceId);
+}
 
-  const result = await handleCreateCampaign(body)
-
-  return new Response(JSON.stringify(result.body), {
-    status: result.status,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  })
+export async function POST(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+  const workspaceId = await getWorkspaceId(userId);
+  if (!workspaceId) return new Response(JSON.stringify({ error: "Workspace not found" }), { status: 404 });
+  return handleCreateCampaign(req, workspaceId);
 }

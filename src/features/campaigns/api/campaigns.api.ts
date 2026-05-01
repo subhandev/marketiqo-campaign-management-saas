@@ -1,25 +1,52 @@
-export async function getCampaigns() {
-  const res = await fetch("/api/campaigns");
+import {
+  CampaignsResponse,
+  CampaignResponse,
+  CreateCampaignInput,
+  UpdateCampaignInput,
+} from "@/features/campaigns/types";
 
-  if (!res.ok) {
-    throw new Error("Failed to fetch campaigns");
-  }
+const BASE_URL = "/api/campaigns";
 
+export async function fetchCampaigns(): Promise<CampaignsResponse> {
+  const res = await fetch(BASE_URL);
+  if (!res.ok) throw new Error("Failed to fetch campaigns");
   return res.json();
 }
 
-export async function createCampaign(data: { name: string; platform: string }) {
-  const res = await fetch("/api/campaigns", {
+export async function fetchCampaign(id: string): Promise<CampaignResponse> {
+  const res = await fetch(`${BASE_URL}/${id}`);
+  if (!res.ok) throw new Error("Failed to fetch campaign");
+  return res.json();
+}
+
+export async function createCampaign(data: CreateCampaignInput): Promise<CampaignResponse> {
+  const res = await fetch(BASE_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-
   if (!res.ok) {
-    throw new Error("Failed to create campaign");
+    const error = await res.json();
+    throw new Error(error.message ?? "Failed to create campaign");
   }
+  return res.json();
+}
 
+export async function updateCampaign(id: string, data: UpdateCampaignInput): Promise<CampaignResponse> {
+  const res = await fetch(`${BASE_URL}/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message ?? "Failed to update campaign");
+  }
+  return res.json();
+}
+
+export async function deleteCampaign(id: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${BASE_URL}/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete campaign");
   return res.json();
 }
