@@ -1,5 +1,5 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/server/db/client'
 import {AppLayout} from '@/features/app-shell/AppLayout'
 
 export default async function DashboardLayout({
@@ -7,7 +7,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { userId } = auth()
+  const { userId } = await auth()
 
   if (!userId) return null
 
