@@ -235,7 +235,7 @@ export function CreateClientForm() {
         </div>
 
         {/* Preview Panel */}
-        <div className="hidden lg:flex flex-col gap-3 pt-8 min-w-0">
+        <div className="hidden lg:flex lg:col-span-2 flex-col gap-3 pt-8 min-w-0">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Preview
           </p>
