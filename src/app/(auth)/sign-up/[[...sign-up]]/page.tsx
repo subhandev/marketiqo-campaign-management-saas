@@ -422,7 +422,7 @@ export default function SignUpPage() {
         {/* Sign in */}
         <p className="mt-6 text-center text-sm text-zinc-500">
           Already have an account?{" "}
-          
+          <a
             href="/sign-in"
             className="font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
           >
