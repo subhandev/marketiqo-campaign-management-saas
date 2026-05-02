@@ -42,7 +42,7 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { userId } = await auth();
 
@@ -60,7 +60,8 @@ export async function PATCH(
     });
   }
 
-  return handleUpdateClient(req, params.id, workspaceId);
+  const { id } = await params;
+  return handleUpdateClient(req, id, workspaceId);
 }
 
 export async function DELETE(
