@@ -52,6 +52,8 @@ export function CreateClientForm() {
       company: "",
       industry: "",
       email: "",
+      phone: "",
+      website: "",
       notes: "",
     },
   });
@@ -79,14 +81,15 @@ export function CreateClientForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-
         {/* Form */}
         <div className="lg:col-span-2 space-y-6">
-
           {/* Client Name */}
           <div className="space-y-2">
             <Label htmlFor="name">
-              Client Name <span className="text-destructive normal-case tracking-normal">*</span>
+              Client Name{" "}
+              <span className="text-destructive normal-case tracking-normal">
+                *
+              </span>
             </Label>
             <Input
               id="name"
@@ -107,7 +110,9 @@ export function CreateClientForm() {
               {...register("company")}
             />
             {errors.company && (
-              <p className="text-xs text-destructive">{errors.company.message}</p>
+              <p className="text-xs text-destructive">
+                {errors.company.message}
+              </p>
             )}
           </div>
 
@@ -134,16 +139,51 @@ export function CreateClientForm() {
               </Select>
             </div>
 
+            {/* Email + Phone */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="e.g. hello@company.com"
+                  {...register("email")}
+                />
+                {errors.email && (
+                  <p className="text-xs text-destructive">
+                    {errors.email.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="e.g. +1 234 567 8900"
+                  {...register("phone")}
+                />
+                {errors.phone && (
+                  <p className="text-xs text-destructive">
+                    {errors.phone.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Website */}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="website">Website</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="e.g. hello@company.com"
-                {...register("email")}
+                id="website"
+                type="url"
+                placeholder="e.g. https://company.com"
+                {...register("website")}
               />
-              {errors.email && (
-                <p className="text-xs text-destructive">{errors.email.message}</p>
+              {errors.website && (
+                <p className="text-xs text-destructive">
+                  {errors.website.message}
+                </p>
               )}
             </div>
           </div>
@@ -160,8 +200,12 @@ export function CreateClientForm() {
             />
             <div className="flex items-center justify-between">
               {errors.notes ? (
-                <p className="text-xs text-destructive">{errors.notes.message}</p>
-              ) : <span />}
+                <p className="text-xs text-destructive">
+                  {errors.notes.message}
+                </p>
+              ) : (
+                <span />
+              )}
               <p className="text-xs text-muted-foreground">
                 {watched.notes?.length ?? 0}/500
               </p>
@@ -253,7 +297,6 @@ export function CreateClientForm() {
             </div>
           </div>
         </div>
-
       </div>
     </form>
   );

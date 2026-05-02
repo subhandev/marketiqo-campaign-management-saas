@@ -1,8 +1,7 @@
-// src/app/(dashboard)/clients/[id]/page.tsx
-
 "use client";
 
 import { use } from "react";
+import { useSearchParams } from "next/navigation";
 import { ClientDetail } from "@/features/clients/components/ClientDetail";
 import { useClient } from "@/features/clients/hooks/useClients";
 
@@ -12,7 +11,9 @@ export default function ClientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { client, loading, error } = useClient(id);
+  const searchParams = useSearchParams();
+  const initialEdit = searchParams.get("edit") === "true";
+  const { client, loading, error, refresh } = useClient(id);
 
   if (loading) {
     return (
@@ -32,5 +33,11 @@ export default function ClientDetailPage({
     );
   }
 
-  return <ClientDetail client={client} />;
+  return (
+    <ClientDetail
+      client={client}
+      initialEdit={initialEdit}
+      onEditSuccess={refresh}
+    />
+  );
 }

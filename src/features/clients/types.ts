@@ -20,6 +20,8 @@ export type Client = {
   company: string | null;
   industry: string | null;
   email: string | null;
+  phone: string | null;
+  website: string | null;
   notes: string | null;
   status: ClientStatus;
   createdAt: string;

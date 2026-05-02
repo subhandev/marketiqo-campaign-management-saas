@@ -34,6 +34,8 @@ model Client {
   company     String?
   industry    String?
   email       String?
+  phone     String?
+  website   String?
   notes       String?
   status      String    @default("active") // active, inactive
 

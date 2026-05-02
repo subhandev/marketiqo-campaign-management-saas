@@ -15,10 +15,12 @@ export const createClientSchema = z.object({
     .email("Enter a valid email address")
     .optional()
     .or(z.literal("")),
-  notes: z
+  phone: z.string().max(20, "Phone must be under 20 characters").optional(),
+  website: z
     .string()
-    .max(500, "Notes must be under 500 characters")
+    .max(100, "Website must be under 100 characters")
     .optional(),
+  notes: z.string().max(500, "Notes must be under 500 characters").optional(),
 });
 
 export type CreateClientSchema = z.infer<typeof createClientSchema>;
