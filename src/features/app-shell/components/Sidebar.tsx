@@ -56,7 +56,7 @@ export function Sidebar({ collapsed }: { collapsed?: boolean }) {
       <div className={`mb-6 ${collapsed ? "flex justify-center" : "px-2"}`}>
         {!collapsed ? (
           <h2 className="text-sm font-semibold tracking-tight">
-            AI Campaign Tracker
+            Marketiqo
           </h2>
         ) : (
           <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center text-white text-xs font-bold">

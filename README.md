@@ -1,4 +1,4 @@
-AI Campaign Tracker
+Marketiqo
 
 An AI-powered SaaS tool to analyze marketing campaign performance and generate actionable insights.
 
@@ -30,7 +30,7 @@ This project uses **shadcn/ui** components located under `src/components/ui/`.
 
 ```bash
 git clone <your-repo-url>
-cd ai-campaign-tracker
+cd marketiqo
 ```
 
 ---
