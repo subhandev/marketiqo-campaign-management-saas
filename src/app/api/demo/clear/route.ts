@@ -16,27 +16,31 @@ export async function DELETE(req: NextRequest) {
   const demoWorkspace = await prisma.workspace.findFirst({
     where: { userId: user.id, isDemo: true },
   });
-  if (!demoWorkspace) {
-    return NextResponse.json({ success: true }, { status: 200 });
+
+  if (demoWorkspace) {
+    const clients = await prisma.client.findMany({
+      where: { workspaceId: demoWorkspace.id },
+      select: { id: true },
+    });
+    const clientIds = clients.map((c) => c.id);
+
+    const campaigns = await prisma.campaign.findMany({
+      where: { clientId: { in: clientIds } },
+      select: { id: true },
+    });
+    const campaignIds = campaigns.map((c) => c.id);
+
+    await prisma.insight.deleteMany({ where: { campaignId: { in: campaignIds } } });
+    await prisma.metric.deleteMany({ where: { campaignId: { in: campaignIds } } });
+    await prisma.campaign.deleteMany({ where: { clientId: { in: clientIds } } });
+    await prisma.client.deleteMany({ where: { workspaceId: demoWorkspace.id } });
+    await prisma.workspace.delete({ where: { id: demoWorkspace.id } });
   }
 
-  const clients = await prisma.client.findMany({
-    where: { workspaceId: demoWorkspace.id },
-    select: { id: true },
+  await prisma.user.update({
+    where: { clerkUserId: userId },
+    data: { demoClearedAt: new Date() },
   });
-  const clientIds = clients.map((c) => c.id);
-
-  const campaigns = await prisma.campaign.findMany({
-    where: { clientId: { in: clientIds } },
-    select: { id: true },
-  });
-  const campaignIds = campaigns.map((c) => c.id);
-
-  await prisma.insight.deleteMany({ where: { campaignId: { in: campaignIds } } });
-  await prisma.metric.deleteMany({ where: { campaignId: { in: campaignIds } } });
-  await prisma.campaign.deleteMany({ where: { clientId: { in: clientIds } } });
-  await prisma.client.deleteMany({ where: { workspaceId: demoWorkspace.id } });
-  await prisma.workspace.delete({ where: { id: demoWorkspace.id } });
 
   return NextResponse.json({ success: true }, { status: 200 });
 }

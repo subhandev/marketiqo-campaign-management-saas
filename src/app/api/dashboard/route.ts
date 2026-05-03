@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/server/db/client";
-
-async function getWorkspaceId(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { clerkUserId: userId },
-    include: {
-      workspaces: {
-        take: 1,
-        orderBy: { createdAt: "asc" },
-      },
-    },
-  });
-  return user?.workspaces[0]?.id ?? null;
-}
+import { resolveWorkspaceId } from "@/server/workspace/resolve-workspace";
 
 export async function GET(req: NextRequest) {
   const { userId } = await auth();
@@ -21,7 +9,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const workspaceId = await getWorkspaceId(userId);
+  const workspaceId = await resolveWorkspaceId(userId);
   if (!workspaceId) {
     return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
   }

@@ -39,6 +39,12 @@ export function DemoOnboarding({
       try {
         const res = await fetch("/api/demo/status");
         const data = await res.json();
+        if (data.cleared) {
+          clearInterval(pollInterval!);
+          stopped = true;
+          setState("idle");
+          return;
+        }
         if (data.seeded) {
           clearInterval(pollInterval!);
           stopped = true;
@@ -85,10 +91,7 @@ export function DemoOnboarding({
             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
           />
         </svg>
-        <span>
-          Setting up your demo workspace — generating AI insights for 8 campaigns{dots}&nbsp;
-          <span className="text-blue-500">This takes about 10 seconds.</span>
-        </span>
+        <span>Setting up your demo workspace — generating AI insights{dots}</span>
       </div>
     );
   }
@@ -97,10 +100,7 @@ export function DemoOnboarding({
     <div className="mb-6 flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm">
       <div className="flex items-center gap-2 text-blue-700">
         <span>✦</span>
-        <span>
-          You&apos;re exploring Marketiqo with demo data — 5 clients, 10 campaigns, AI-generated
-          insights.
-        </span>
+        <span>You&apos;re exploring Marketiqo with demo data.</span>
       </div>
       <div className="flex items-center gap-3">
         <a

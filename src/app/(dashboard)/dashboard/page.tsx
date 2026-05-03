@@ -10,17 +10,22 @@ export default async function DashboardPage() {
 
   if (userId) {
     const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
-    const demoWorkspace = user
-      ? await prisma.workspace.findFirst({
-          where: { userId: user.id, isDemo: true },
-        })
-      : null;
 
-    demoInitialState = !demoWorkspace
-      ? "needs_seed"
-      : demoWorkspace.seededAt
-      ? "seeded"
-      : "needs_seed";
+    if (user?.demoClearedAt) {
+      demoInitialState = "none";
+    } else {
+      const demoWorkspace = user
+        ? await prisma.workspace.findFirst({
+            where: { userId: user.id, isDemo: true },
+          })
+        : null;
+
+      demoInitialState = !demoWorkspace
+        ? "needs_seed"
+        : demoWorkspace.seededAt
+        ? "seeded"
+        : "needs_seed";
+    }
   }
 
   return (
