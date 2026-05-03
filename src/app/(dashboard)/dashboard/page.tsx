@@ -75,19 +75,16 @@ const statusLabel: Record<CampaignStatus, string> = {
 };
 
 function DonutChart({ health }: { health: DashboardData["health"] }) {
-  const total = health.total;
-  if (total === 0) return (
-    <div className="flex items-center justify-center h-48 text-sm text-muted-foreground">
-      No campaigns yet
-    </div>
-  );
-
   const segments = [
     { key: "active",    value: health.active,    color: "#22c55e", label: "Active" },
     { key: "at_risk",   value: health.at_risk,   color: "#f97316", label: "At Risk" },
     { key: "completed", value: health.completed, color: "#94a3b8", label: "Completed" },
     { key: "planned",   value: health.planned,   color: "#3b82f6", label: "Planned" },
+    { key: "archived",  value: health.archived,  color: "#d4d4d8", label: "Archived" },
   ].filter((s) => s.value > 0);
+
+  // Use sum of visible segments so percentages always add to 100%
+  const segmentTotal = segments.reduce((sum, s) => sum + s.value, 0);
 
   const radius = 60;
   const circumference = 2 * Math.PI * radius;
@@ -98,7 +95,7 @@ function DonutChart({ health }: { health: DashboardData["health"] }) {
       <div className="relative shrink-0">
         <svg width="160" height="160" viewBox="0 0 160 160">
           {segments.map((segment) => {
-            const pct = segment.value / total;
+            const pct = segment.value / segmentTotal;
             const dash = pct * circumference;
             const gap = circumference - dash;
             const el = (
@@ -121,7 +118,7 @@ function DonutChart({ health }: { health: DashboardData["health"] }) {
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold">{total}</span>
+          <span className="text-2xl font-bold">{health.total}</span>
           <span className="text-xs text-muted-foreground">Total</span>
         </div>
       </div>
@@ -133,7 +130,7 @@ function DonutChart({ health }: { health: DashboardData["health"] }) {
             <span className="font-semibold ml-auto pl-4">
               {segment.value}
               <span className="text-muted-foreground font-normal ml-1">
-                ({Math.round((segment.value / total) * 100)}%)
+                ({Math.round((segment.value / segmentTotal) * 100)}%)
               </span>
             </span>
           </div>
@@ -169,70 +166,71 @@ export default function DashboardPage() {
     year: "numeric",
   });
 
-if (loading) {
-  return (
-    <div className="space-y-8">
+  if (loading) {
+    return (
+      <div className="space-y-8">
 
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-4 w-56" />
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-4 w-56" />
+          </div>
+          <Skeleton className="h-9 w-32 rounded-md" />
         </div>
-        <Skeleton className="h-9 w-32 rounded-md" />
-      </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-border bg-card p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="h-8 w-8 rounded-lg" />
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border bg-card p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-8 w-8 rounded-lg" />
+              </div>
+              <Skeleton className="h-6 w-20" />
             </div>
-            <Skeleton className="h-6 w-20" />
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      {/* Middle Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-border bg-card p-6 space-y-4">
+        {/* Middle Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border bg-card p-6 space-y-4">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-40 w-full rounded-md" />
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-3">
+            <Skeleton className="h-4 w-40" />
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full rounded-md" />
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
             <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-40 w-full rounded-md" />
-          </div>
-        ))}
-      </div>
-
-      {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-3">
-          <Skeleton className="h-4 w-40" />
-          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-md" />
-            ))}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full rounded-md" />
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="space-y-3">
-          <Skeleton className="h-4 w-32" />
-          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full rounded-md" />
-            ))}
-          </div>
-        </div>
       </div>
-
-    </div>
-  );
-}
+    );
+  }
 
   if (!data) return null;
 
   const { stats, health, recentCampaigns, atRiskCampaignsList, recentClients } = data;
+  const hasAnyCampaigns = health.total > 0;
 
   return (
     <div className="space-y-8">
@@ -257,6 +255,7 @@ if (loading) {
           {
             label: "Active Campaigns",
             value: stats.activeCampaigns,
+            display: String(stats.activeCampaigns),
             icon: Megaphone,
             color: "text-green-600",
             bg: "bg-green-50",
@@ -265,6 +264,7 @@ if (loading) {
           {
             label: "At Risk",
             value: stats.atRiskCampaigns,
+            display: String(stats.atRiskCampaigns),
             icon: AlertTriangle,
             color: "text-orange-600",
             bg: "bg-orange-50",
@@ -273,6 +273,7 @@ if (loading) {
           {
             label: "Completed",
             value: stats.completedCampaigns,
+            display: String(stats.completedCampaigns),
             icon: CheckCircle,
             color: "text-zinc-500",
             bg: "bg-zinc-100",
@@ -281,6 +282,7 @@ if (loading) {
           {
             label: "Total Clients",
             value: stats.totalClients,
+            display: String(stats.totalClients),
             icon: Users,
             color: "text-blue-600",
             bg: "bg-blue-50",
@@ -288,7 +290,8 @@ if (loading) {
           },
           {
             label: "Total Spend",
-            value: `$${stats.totalSpend.toLocaleString()}`,
+            value: stats.totalSpend,
+            display: `$${stats.totalSpend.toLocaleString()}`,
             icon: DollarSign,
             color: "text-purple-600",
             bg: "bg-purple-50",
@@ -308,7 +311,10 @@ if (loading) {
                 <stat.icon className={cn("h-4 w-4", stat.color)} />
               </div>
             </div>
-            <p className="text-2xl font-bold">{stat.value}</p>
+            <p className="text-2xl font-bold">{stat.display}</p>
+            {stat.value === 0 && (
+              <p className="text-xs text-muted-foreground">No data yet</p>
+            )}
           </div>
         ))}
       </div>
@@ -391,10 +397,24 @@ if (loading) {
         {/* Campaign Health */}
         <div className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-4">
           <h2 className="text-sm font-semibold">Campaign Health</h2>
-          <DonutChart health={health} />
+          {!hasAnyCampaigns ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+              <p className="text-sm text-muted-foreground">No campaigns yet</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => router.push("/campaigns/new")}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                Create Campaign
+              </Button>
+            </div>
+          ) : (
+            <DonutChart health={health} />
+          )}
         </div>
 
-        {/* AI Insights */}
+        {/* AI Summary */}
         <div className="rounded-xl border border-zinc-200 bg-zinc-50 shadow-sm p-6 space-y-4">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
@@ -404,64 +424,82 @@ if (loading) {
             </span>
           </div>
 
-          <div className="space-y-3">
-            <div className="p-3 rounded-lg border border-green-200 bg-green-50/50 space-y-1">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-3.5 w-3.5 text-green-500" />
-                <p className="text-xs font-semibold">
-                  {stats.activeCampaigns} active campaign{stats.activeCampaigns !== 1 ? "s" : ""}
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Currently running across your client portfolio.
+          {!hasAnyCampaigns ? (
+            <div className="flex flex-col items-center justify-center py-6 text-center gap-3">
+              <p className="text-sm text-muted-foreground">
+                Add clients and run campaigns to generate AI insights
               </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => router.push("/clients/new")}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                Add Client
+              </Button>
             </div>
-
-            {stats.atRiskCampaigns > 0 && (
-              <div className="p-3 rounded-lg border border-orange-200 bg-orange-50/50 space-y-1">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
-                  <p className="text-xs font-semibold">
-                    {stats.atRiskCampaigns} need{stats.atRiskCampaigns === 1 ? "s" : ""} attention
+          ) : (
+            <>
+              <div className="space-y-3">
+                <div className="p-3 rounded-lg border border-green-200 bg-green-50/50 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-3.5 w-3.5 text-green-500" />
+                    <p className="text-xs font-semibold">
+                      {stats.activeCampaigns} active campaign{stats.activeCampaigns !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Currently running across your client portfolio.
                   </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Open each at-risk campaign and generate AI insights for recommendations.
-                </p>
-              </div>
-            )}
 
-            <div className="p-3 rounded-lg border border-blue-200 bg-blue-50/50 space-y-1">
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-3.5 w-3.5 text-blue-500" />
-                <p className="text-xs font-semibold">
-                  ${stats.totalSpend.toLocaleString()} tracked
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Total spend across all campaigns. Open campaigns to generate AI analysis.
-              </p>
-            </div>
-          </div>
+                {stats.atRiskCampaigns > 0 && (
+                  <div className="p-3 rounded-lg border border-orange-200 bg-orange-50/50 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
+                      <p className="text-xs font-semibold">
+                        {stats.atRiskCampaigns} need{stats.atRiskCampaigns === 1 ? "s" : ""} attention
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Open each at-risk campaign and generate AI insights for recommendations.
+                    </p>
+                  </div>
+                )}
 
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full"
-            onClick={() => router.push("/campaigns")}
-          >
-            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-            View all campaigns
-          </Button>
+                <div className="p-3 rounded-lg border border-blue-200 bg-blue-50/50 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-3.5 w-3.5 text-blue-500" />
+                    <p className="text-xs font-semibold">
+                      ${stats.totalSpend.toLocaleString()} tracked
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Total spend across all campaigns. Open campaigns to generate AI analysis.
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={() => router.push("/campaigns")}
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                View all campaigns
+              </Button>
+            </>
+          )}
         </div>
 
       </div>
 
-      {/* Bottom Row — Recent Campaigns + Recent Clients */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Bottom Row — equal height Recent Campaigns + Recent Clients */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
 
         {/* Recent Campaigns */}
-        <div className="lg:col-span-2 space-y-3">
+        <div className="lg:col-span-2 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">Recent Campaigns</h2>
             <button
@@ -471,17 +509,21 @@ if (loading) {
               View all <ArrowRight className="h-3 w-3" />
             </button>
           </div>
-          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden flex flex-col flex-grow">
             {recentCampaigns.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+              <div className="flex flex-col items-center justify-center py-12 text-center gap-3 flex-grow">
                 <p className="text-sm text-muted-foreground">No campaigns yet</p>
-                <Button size="sm" onClick={() => router.push("/campaigns/new")}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => router.push("/campaigns/new")}
+                >
                   <Plus className="h-3.5 w-3.5 mr-1.5" />
                   Create Campaign
                 </Button>
               </div>
             ) : (
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-border flex-grow">
                 {recentCampaigns.map((campaign) => (
                   <div
                     key={campaign.id}
@@ -526,7 +568,7 @@ if (loading) {
         </div>
 
         {/* Recent Clients */}
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">Recent Clients</h2>
             <button
@@ -536,17 +578,21 @@ if (loading) {
               View all <ArrowRight className="h-3 w-3" />
             </button>
           </div>
-          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden flex flex-col flex-grow">
             {recentClients.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+              <div className="flex flex-col items-center justify-center py-12 text-center gap-3 flex-grow">
                 <p className="text-sm text-muted-foreground">No clients yet</p>
-                <Button size="sm" onClick={() => router.push("/clients/new")}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => router.push("/clients/new")}
+                >
                   <Plus className="h-3.5 w-3.5 mr-1.5" />
                   Add Client
                 </Button>
               </div>
             ) : (
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-border flex-grow">
                 {recentClients.map((client) => (
                   <div
                     key={client.id}
