@@ -19,6 +19,7 @@ export function DemoSeedOverlay({ onComplete, onReadyToComplete }: DemoSeedOverl
   const [progress, setProgress] = useState(0);
   const [completing, setCompleting] = useState(false);
   const [visible, setVisible] = useState(true);
+  const [mounted, setMounted] = useState(true);
 
   // Expose triggerComplete to parent on mount
   useEffect(() => {
@@ -55,16 +56,17 @@ export function DemoSeedOverlay({ onComplete, onReadyToComplete }: DemoSeedOverl
     setProgress(100);
     setTimeout(() => {
       setVisible(false);
-      setTimeout(() => {
-        onComplete();
-      }, 500);
+      setTimeout(() => setMounted(false), 450);
+      setTimeout(() => { onComplete(); }, 500);
     }, 600);
   }
+
+  if (!mounted) return null;
 
   return (
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center bg-background/75 backdrop-blur-sm transition-opacity duration-500 ${
-        visible ? "opacity-100" : "opacity-0"
+        visible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
       }`}
     >
       <div className="w-full max-w-md rounded-xl border border-border bg-card shadow-xl px-8 py-8 flex flex-col gap-6">

@@ -63,6 +63,7 @@ export function CreateClientForm() {
   const onSubmit = async (data: CreateClientSchema) => {
     try {
       await create(data);
+      router.refresh();
       router.push("/clients");
     } catch {
       // error handled in hook

@@ -27,6 +27,9 @@ export type Client = {
   createdAt: string;
   updatedAt: string;
   campaigns?: Campaign[];
+  _count?: {
+    campaigns: number;
+  };
 };
 
 export type CreateClientInput = {

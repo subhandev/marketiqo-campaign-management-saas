@@ -17,6 +17,15 @@ interface ClientTableProps {
   onDelete: (id: string) => void;
 }
 
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 export function ClientTable({ clients, onDelete }: ClientTableProps) {
   const router = useRouter();
 
@@ -26,12 +35,24 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
         {/* HEADER */}
         <thead className="bg-[hsl(var(--muted)/0.5)] border-b border-[hsl(var(--border))]">
           <tr>
-            {["Client", "Industry", "Campaigns", "Status", ""].map((h) => (
+            {[
+              { label: "Client", cls: "" },
+              { label: "Company", cls: "" },
+              { label: "Industry", cls: "hidden lg:table-cell" },
+              { label: "Email", cls: "hidden lg:table-cell" },
+              { label: "Campaigns", cls: "" },
+              { label: "Status", cls: "" },
+              { label: "Created", cls: "hidden md:table-cell" },
+              { label: "", cls: "" },
+            ].map((h) => (
               <th
-                key={h}
-                className="text-[11px] uppercase tracking-wider font-medium text-[hsl(var(--muted-foreground))] px-5 py-3 text-left border-r border-[hsl(var(--border)/0.4)] last:border-none"
+                key={h.label}
+                className={cn(
+                  "text-[11px] uppercase tracking-wider font-medium text-[hsl(var(--muted-foreground))] px-5 py-3 text-left",
+                  h.cls,
+                )}
               >
-                {h}
+                {h.label}
               </th>
             ))}
           </tr>
@@ -48,53 +69,77 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
               {/* CLIENT */}
               <td className="px-5 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] text-xs font-semibold flex items-center justify-center">
-                    {client.name[0].toUpperCase()}
+                  <div className="w-8 h-8 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center shrink-0">
+                    {getInitials(client.name)}
                   </div>
-
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-medium text-[hsl(var(--foreground))] truncate">
-                      {client.name}
-                    </span>
-                    {client.email && (
-                      <span className="text-xs text-[hsl(var(--muted-foreground))] truncate">
-                        {client.email}
-                      </span>
-                    )}
-                  </div>
+                  <span className="text-sm font-medium text-[hsl(var(--foreground))] truncate max-w-[160px]">
+                    {client.name}
+                  </span>
                 </div>
               </td>
 
+              {/* COMPANY */}
+              <td className="px-5 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                {client.company ?? "—"}
+              </td>
+
               {/* INDUSTRY */}
-              <td className="px-5 py-3">
-                {client.industry ? (
-                  <span className="text-xs px-2 py-0.5 rounded-md bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
-                    {client.industry}
-                  </span>
+              <td className="hidden lg:table-cell px-5 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                {client.industry ?? "—"}
+              </td>
+
+              {/* EMAIL */}
+              <td
+                className="hidden lg:table-cell px-5 py-3 text-sm text-muted-foreground"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {client.email ? (
+                  <a
+                    href={`mailto:${client.email}`}
+                    className="hover:text-primary transition-colors truncate block max-w-[180px]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {client.email}
+                  </a>
                 ) : (
-                  <span className="text-sm text-[hsl(var(--muted-foreground))]">
-                    —
-                  </span>
+                  "—"
                 )}
               </td>
 
               {/* CAMPAIGNS */}
-              <td className="px-5 py-3 text-sm text-[hsl(var(--muted-foreground))]">
-                {(client as any)._count?.campaigns ?? 0}
+              <td
+                className="px-5 py-3"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/campaigns?clientId=${client.id}`);
+                }}
+              >
+                <span className="inline-flex items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-medium w-6 h-6">
+                  {client._count?.campaigns ?? 0}
+                </span>
               </td>
 
               {/* STATUS */}
               <td className="px-5 py-3">
                 <span
                   className={cn(
-                    "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border",
+                    "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
                     client.status === "active"
-                      ? "bg-[hsl(var(--success-soft))] text-[hsl(var(--success))] border-[hsl(var(--success)/0.3)]"
-                      : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))]",
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : "bg-zinc-100 text-zinc-500 border-zinc-200",
                   )}
                 >
                   {client.status}
                 </span>
+              </td>
+
+              {/* CREATED */}
+              <td className="hidden md:table-cell px-5 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                {new Date(client.createdAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
               </td>
 
               {/* ACTIONS */}
@@ -103,7 +148,6 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-end gap-1">
-                  {/* Always visible primary action */}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -113,7 +157,6 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
                     View <ArrowRight className="ml-1 h-3 w-3" />
                   </Button>
 
-                  {/* Secondary actions (hover only) */}
                   <div className="opacity-0 group-hover:opacity-100 transition">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -128,15 +171,11 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
                         >
                           View
                         </DropdownMenuItem>
-
                         <DropdownMenuItem
-                          onClick={() =>
-                            router.push(`/clients/${client.id}?edit=true`)
-                          }
+                          onClick={() => router.push(`/clients/${client.id}?edit=true`)}
                         >
                           Edit
                         </DropdownMenuItem>
-
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
                           onClick={() => onDelete(client.id)}
