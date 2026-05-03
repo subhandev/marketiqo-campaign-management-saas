@@ -1,28 +1,10 @@
 "use client";
 
-import {
-  Search,
-  Bell,
-  HelpCircle,
-  ChevronDown,
-  LogOut,
-  User,
-} from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useClerk, useUser } from "@clerk/nextjs";
+import { Search, Bell, CircleHelp, Plus } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 
 export function Header() {
-  const { signOut } = useClerk();
   const { user } = useUser();
   const router = useRouter();
 
@@ -34,81 +16,52 @@ export function Header() {
     .toUpperCase()
     .slice(0, 2);
 
-  const handleSignOut = async () => {
-    await signOut({ redirectUrl: "/sign-in" });
-  };
-
   return (
-    <header className="h-14 border-b bg-background">
-      <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
+    <header className="bg-white border-b border-border h-14 px-6 flex items-center justify-between">
+      {/* Left — Search */}
+      <div className="flex items-center gap-2 bg-muted/60 rounded-lg px-3 h-9 w-[340px]">
+        <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <input
+          placeholder="Search campaigns, clients, tasks..."
+          className="bg-transparent text-sm outline-none flex-1 text-foreground placeholder:text-muted-foreground"
+        />
+        <kbd className="bg-muted border border-border text-muted-foreground text-[10px] px-1.5 py-0.5 rounded shrink-0">
+          ⌘K
+        </kbd>
+      </div>
 
-        {/* LEFT — Search */}
-        <div className="flex items-center gap-3 w-full max-w-md">
-          <div className="relative w-full">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search campaigns, clients, tasks..."
-              className="pl-8 h-9 bg-muted/50 border-none focus-visible:ring-1"
-            />
+      {/* Right */}
+      <div className="flex items-center gap-3">
+        <button className="text-muted-foreground hover:text-foreground transition-colors">
+          <CircleHelp className="h-[18px] w-[18px]" />
+        </button>
+
+        <div className="relative">
+          <button className="text-muted-foreground hover:text-foreground transition-colors">
+            <Bell className="h-[18px] w-[18px]" />
+          </button>
+          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-red-500 rounded-full pointer-events-none" />
+        </div>
+
+        <div className="h-6 w-px bg-border" />
+
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-zinc-800 text-white text-xs flex items-center justify-center font-medium shrink-0">
+            {initials}
+          </div>
+          <div className="flex flex-col leading-tight">
+            <span className="text-sm font-medium">{fullName}</span>
+            <span className="text-[10px] text-muted-foreground">Admin</span>
           </div>
         </div>
 
-        {/* RIGHT */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <Bell className="h-5 w-5" />
-          </Button>
-
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <HelpCircle className="h-5 w-5" />
-          </Button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <div className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted cursor-pointer">
-                <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                  {initials}
-                </div>
-                <div className="hidden sm:flex flex-col leading-tight">
-                  <span className="text-sm font-medium tracking-tight">
-                    {fullName}
-                  </span>
-                  <span className="text-xs text-muted-foreground">Admin</span>
-                </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-medium text-sm">{fullName}</span>
-                  <span className="text-xs text-muted-foreground truncate">
-                    {user?.primaryEmailAddress?.emailAddress}
-                  </span>
-                </div>
-              </DropdownMenuLabel>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                Profile
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem
-                onClick={handleSignOut}
-                className="text-destructive focus:text-destructive cursor-pointer"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
+        <button
+          onClick={() => router.push("/campaigns/new")}
+          className="bg-black text-white text-sm font-medium px-4 h-9 rounded-lg hover:bg-zinc-800 flex items-center gap-1.5 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          New Campaign
+        </button>
       </div>
     </header>
   );

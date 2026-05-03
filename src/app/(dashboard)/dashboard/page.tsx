@@ -1,628 +1,510 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import {
-  Megaphone,
+  MessageSquare,
   AlertTriangle,
-  CheckCircle,
+  CheckCircle2,
   Users,
   DollarSign,
   Sparkles,
-  ArrowRight,
-  Plus,
+  Clock,
+  Zap,
   TrendingUp,
+  TrendingDown,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CampaignStatus } from "@/features/campaigns/types";
-import { Skeleton } from "@/components/ui/skeleton";
 
-interface DashboardData {
-  stats: {
-    totalClients: number;
-    activeCampaigns: number;
-    atRiskCampaigns: number;
-    completedCampaigns: number;
-    totalSpend: number;
-  };
-  health: {
-    active: number;
-    at_risk: number;
-    completed: number;
-    planned: number;
-    archived: number;
-    total: number;
-  };
-  recentCampaigns: {
-    id: string;
-    name: string;
-    platform: string;
-    status: CampaignStatus;
-    deadline: string | null;
-    client: { id: string; name: string; industry: string | null } | null;
-  }[];
-  atRiskCampaignsList: {
-    id: string;
-    name: string;
-    platform: string;
-    deadline: string | null;
-    client: { id: string; name: string; industry: string | null } | null;
-  }[];
-  recentClients: {
-    id: string;
-    name: string;
-    industry: string | null;
-    status: string;
-    campaignCount: number;
-  }[];
-}
+// ── Mock data ─────────────────────────────────────────────────────────────────
 
-const statusStyles: Record<CampaignStatus, string> = {
-  planned:   "bg-blue-50 text-blue-700 border-blue-200",
-  active:    "bg-green-50 text-green-700 border-green-200",
-  at_risk:   "bg-orange-50 text-orange-700 border-orange-200",
-  completed: "bg-zinc-100 text-zinc-500 border-zinc-200",
-  archived:  "bg-zinc-100 text-zinc-400 border-zinc-200",
+const STATS = [
+  {
+    label: "Active Campaigns",
+    value: "4",
+    trend: "+12% vs last month",
+    up: true,
+    icon: MessageSquare,
+    iconColor: "text-blue-600",
+    iconBg: "bg-blue-50",
+    href: "/campaigns",
+  },
+  {
+    label: "At Risk",
+    value: "1",
+    trend: "+1 vs last month",
+    up: false,
+    icon: AlertTriangle,
+    iconColor: "text-orange-500",
+    iconBg: "bg-orange-50",
+    href: "/campaigns",
+  },
+  {
+    label: "Completed",
+    value: "2",
+    trend: "+2 vs last month",
+    up: true,
+    icon: CheckCircle2,
+    iconColor: "text-green-600",
+    iconBg: "bg-green-50",
+    href: "/campaigns",
+  },
+  {
+    label: "Total Clients",
+    value: "5",
+    trend: "+1 vs last month",
+    up: true,
+    icon: Users,
+    iconColor: "text-blue-600",
+    iconBg: "bg-blue-50",
+    href: "/clients",
+  },
+  {
+    label: "Total Spend",
+    value: "$73.4K",
+    trend: "+8.2% vs last month",
+    up: true,
+    icon: DollarSign,
+    iconColor: "text-blue-600",
+    iconBg: "bg-blue-50",
+    href: "/campaigns",
+  },
+];
+
+const RECENT_CAMPAIGNS = [
+  {
+    id: "1",
+    name: "Instagram Growth Campaign",
+    client: "GreenLeaf Organics",
+    platform: "Meta",
+    due: "May 15",
+    status: "at_risk" as const,
+    ownerInitials: "SA",
+    ownerBg: "bg-zinc-800",
+  },
+  {
+    id: "2",
+    name: "Summer Sale Launch 2026",
+    client: "Nike Regional",
+    platform: "Meta",
+    due: "Jul 31",
+    status: "active" as const,
+    ownerInitials: "JH",
+    ownerBg: "bg-blue-600",
+  },
+  {
+    id: "3",
+    name: "Brand Awareness — YouTube",
+    client: "Nike Regional",
+    platform: "YouTube",
+    due: "Mar 31",
+    status: "completed" as const,
+    ownerInitials: "NO",
+    ownerBg: "bg-green-700",
+  },
+  {
+    id: "4",
+    name: "Nike Regional Launch",
+    client: "Nike Regional",
+    platform: "Twitter/X",
+    due: "Jun 15",
+    status: "archived" as const,
+    ownerInitials: "JH",
+    ownerBg: "bg-blue-600",
+  },
+  {
+    id: "5",
+    name: "EduLearn Spring",
+    client: "EduLearn",
+    platform: "Meta",
+    due: "Aug 12",
+    status: "archived" as const,
+    ownerInitials: "NO",
+    ownerBg: "bg-green-700",
+  },
+];
+
+const RECENT_CLIENTS = [
+  {
+    id: "1",
+    name: "Nike Regional",
+    industry: "Ecommerce",
+    campaigns: 3,
+    iconBg: "bg-blue-100",
+    iconColor: "text-blue-600",
+    initial: "N",
+  },
+  {
+    id: "2",
+    name: "EduLearn",
+    industry: "Education",
+    campaigns: 2,
+    iconBg: "bg-orange-100",
+    iconColor: "text-orange-600",
+    initial: "E",
+  },
+  {
+    id: "3",
+    name: "StartupX",
+    industry: "SaaS",
+    campaigns: 2,
+    iconBg: "bg-purple-100",
+    iconColor: "text-purple-600",
+    initial: "S",
+  },
+  {
+    id: "4",
+    name: "Local Mart",
+    industry: "Retail",
+    campaigns: 1,
+    iconBg: "bg-green-100",
+    iconColor: "text-green-600",
+    initial: "L",
+  },
+];
+
+// ── Status badge config ───────────────────────────────────────────────────────
+
+type Status = "at_risk" | "active" | "completed" | "archived" | "planned";
+
+const STATUS_CONFIG: Record<
+  Status,
+  { label: string; dot: string; badge: string }
+> = {
+  at_risk: {
+    label: "At Risk",
+    dot: "bg-orange-400",
+    badge: "bg-orange-50 text-orange-700 border border-orange-200",
+  },
+  active: {
+    label: "Active",
+    dot: "bg-green-500",
+    badge: "bg-green-50 text-green-700 border border-green-200",
+  },
+  completed: {
+    label: "Completed",
+    dot: "bg-zinc-400",
+    badge: "bg-zinc-100 text-zinc-500 border border-zinc-200",
+  },
+  archived: {
+    label: "Archived",
+    dot: "bg-zinc-400",
+    badge: "bg-zinc-100 text-zinc-500 border border-zinc-200",
+  },
+  planned: {
+    label: "Planned",
+    dot: "bg-blue-500",
+    badge: "bg-blue-50 text-blue-700 border border-blue-200",
+  },
 };
 
-const statusLabel: Record<CampaignStatus, string> = {
-  planned:   "Planned",
-  active:    "Active",
-  at_risk:   "At Risk",
-  completed: "Completed",
-  archived:  "Archived",
-};
-
-function DonutChart({ health }: { health: DashboardData["health"] }) {
-  const segments = [
-    { key: "active",    value: health.active,    color: "#22c55e", label: "Active" },
-    { key: "at_risk",   value: health.at_risk,   color: "#f97316", label: "At Risk" },
-    { key: "completed", value: health.completed, color: "#94a3b8", label: "Completed" },
-    { key: "planned",   value: health.planned,   color: "#3b82f6", label: "Planned" },
-    { key: "archived",  value: health.archived,  color: "#d4d4d8", label: "Archived" },
-  ].filter((s) => s.value > 0);
-
-  // Use sum of visible segments so percentages always add to 100%
-  const segmentTotal = segments.reduce((sum, s) => sum + s.value, 0);
-
-  const radius = 60;
-  const circumference = 2 * Math.PI * radius;
-  let offset = 0;
-
+function StatusBadge({ status }: { status: Status }) {
+  const cfg = STATUS_CONFIG[status];
   return (
-    <div className="flex items-center gap-6">
-      <div className="relative shrink-0">
-        <svg width="160" height="160" viewBox="0 0 160 160">
-          {segments.map((segment) => {
-            const pct = segment.value / segmentTotal;
-            const dash = pct * circumference;
-            const gap = circumference - dash;
-            const el = (
-              <circle
-                key={segment.key}
-                cx="80"
-                cy="80"
-                r={radius}
-                fill="none"
-                stroke={segment.color}
-                strokeWidth="20"
-                strokeDasharray={`${dash} ${gap}`}
-                strokeDashoffset={-offset}
-                transform="rotate(-90 80 80)"
-                className="transition-all duration-500"
-              />
-            );
-            offset += dash;
-            return el;
-          })}
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold">{health.total}</span>
-          <span className="text-xs text-muted-foreground">Total</span>
-        </div>
-      </div>
-      <div className="space-y-2">
-        {segments.map((segment) => (
-          <div key={segment.key} className="flex items-center gap-2 text-sm">
-            <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: segment.color }} />
-            <span className="text-muted-foreground">{segment.label}</span>
-            <span className="font-semibold ml-auto pl-4">
-              {segment.value}
-              <span className="text-muted-foreground font-normal ml-1">
-                ({Math.round((segment.value / segmentTotal) * 100)}%)
-              </span>
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <span
+      className={cn(
+        "text-xs px-2 py-0.5 rounded-full flex items-center gap-1 w-fit",
+        cfg.badge
+      )}
+    >
+      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", cfg.dot)} />
+      {cfg.label}
+    </span>
   );
 }
 
+// ── Dashboard page ────────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
   const router = useRouter();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/dashboard")
-      .then((r) => r.json())
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, []);
-
-  const greeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
-
-  const today = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-
-  if (loading) {
-    return (
-      <div className="space-y-8">
-
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div className="space-y-2">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-4 w-56" />
-          </div>
-          <Skeleton className="h-9 w-32 rounded-md" />
-        </div>
-
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-border bg-card p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <Skeleton className="h-3 w-24" />
-                <Skeleton className="h-8 w-8 rounded-lg" />
-              </div>
-              <Skeleton className="h-6 w-20" />
-            </div>
-          ))}
-        </div>
-
-        {/* Middle Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-border bg-card p-6 space-y-4">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-40 w-full rounded-md" />
-            </div>
-          ))}
-        </div>
-
-        {/* Bottom Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-3">
-            <Skeleton className="h-4 w-40" />
-            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full rounded-md" />
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <Skeleton className="h-4 w-32" />
-            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full rounded-md" />
-              ))}
-            </div>
-          </div>
-        </div>
-
-      </div>
-    );
-  }
-
-  if (!data) return null;
-
-  const { stats, health, recentCampaigns, atRiskCampaignsList, recentClients } = data;
-  const hasAnyCampaigns = health.total > 0;
+  const { user } = useUser();
+  const firstName = user?.firstName ?? user?.username ?? "there";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
 
-      {/* Header */}
+      {/* ── Page header ── */}
       <div className="flex items-start justify-between">
-        <div className="space-y-0.5">
+        <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {greeting()} 👋
+            Welcome back, {firstName} 👋
           </h1>
-          <p className="text-sm text-muted-foreground">{today}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Here&apos;s what&apos;s happening across your campaigns today.
+          </p>
         </div>
-        <Button onClick={() => router.push("/campaigns/new")}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Campaign
-        </Button>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+          <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+          All systems operational
+        </div>
       </div>
 
-      {/* Stats Row — 5 cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        {[
-          {
-            label: "Active Campaigns",
-            value: stats.activeCampaigns,
-            display: String(stats.activeCampaigns),
-            icon: Megaphone,
-            color: "text-green-600",
-            bg: "bg-green-50",
-            onClick: () => router.push("/campaigns"),
-          },
-          {
-            label: "At Risk",
-            value: stats.atRiskCampaigns,
-            display: String(stats.atRiskCampaigns),
-            icon: AlertTriangle,
-            color: "text-orange-600",
-            bg: "bg-orange-50",
-            onClick: () => router.push("/campaigns"),
-          },
-          {
-            label: "Completed",
-            value: stats.completedCampaigns,
-            display: String(stats.completedCampaigns),
-            icon: CheckCircle,
-            color: "text-zinc-500",
-            bg: "bg-zinc-100",
-            onClick: () => router.push("/campaigns"),
-          },
-          {
-            label: "Total Clients",
-            value: stats.totalClients,
-            display: String(stats.totalClients),
-            icon: Users,
-            color: "text-blue-600",
-            bg: "bg-blue-50",
-            onClick: () => router.push("/clients"),
-          },
-          {
-            label: "Total Spend",
-            value: stats.totalSpend,
-            display: `$${stats.totalSpend.toLocaleString()}`,
-            icon: DollarSign,
-            color: "text-purple-600",
-            bg: "bg-purple-50",
-            onClick: () => router.push("/campaigns"),
-          },
-        ].map((stat) => (
+      {/* ── Row 1 — 5 stat cards ── */}
+      <div className="grid grid-cols-5 gap-4">
+        {STATS.map((stat) => (
           <div
             key={stat.label}
-            onClick={stat.onClick}
-            className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-3 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => router.push(stat.href)}
+            className="rounded-xl border border-border bg-card shadow-sm p-5 cursor-pointer hover:shadow-md transition-shadow"
           >
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                {stat.label}
-              </p>
-              <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", stat.bg)}>
-                <stat.icon className={cn("h-4 w-4", stat.color)} />
+            <div className="flex items-start justify-between">
+              <p className="text-sm text-muted-foreground">{stat.label}</p>
+              <div
+                className={cn(
+                  "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
+                  stat.iconBg
+                )}
+              >
+                <stat.icon className={cn("h-4 w-4", stat.iconColor)} />
               </div>
             </div>
-            <p className="text-2xl font-bold">{stat.display}</p>
-            {stat.value === 0 && (
-              <p className="text-xs text-muted-foreground">No data yet</p>
-            )}
+            <p className="text-3xl font-bold tracking-tight mt-2">{stat.value}</p>
+            <div className="flex items-center gap-1 mt-1">
+              {stat.up ? (
+                <TrendingUp className="h-3 w-3 text-green-500 shrink-0" />
+              ) : (
+                <TrendingDown className="h-3 w-3 text-red-500 shrink-0" />
+              )}
+              <span className="text-xs text-muted-foreground">{stat.trend}</span>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Middle Row — 3 columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* ── Row 2 — Needs Attention + AI Summary ── */}
+      <div className="grid grid-cols-2 gap-4">
 
         {/* Needs Attention */}
-        <div className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-orange-500" />
-              <h2 className="text-sm font-semibold">Needs Attention</h2>
-              {stats.atRiskCampaigns > 0 && (
-                <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-medium">
-                  {stats.atRiskCampaigns}
-                </span>
-              )}
+        <div className="rounded-xl border border-border bg-card shadow-sm p-5">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-orange-500 shrink-0" />
+            <span className="font-semibold text-sm">Needs Attention</span>
+            <span className="text-xs text-muted-foreground">
+              1 campaign requires action
+            </span>
+          </div>
+
+          <div className="rounded-lg border border-border bg-background p-3 mt-3">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-sm">Instagram Growth Campaign</span>
+              <StatusBadge status="at_risk" />
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              GreenLeaf Organics · Meta
+            </p>
+            <div className="flex items-center gap-1 mt-1">
+              <Clock className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">12 days remaining</span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => router.push("/campaigns")}
+            className="w-full mt-3 border border-border bg-background hover:bg-muted/50 text-sm font-medium h-9 rounded-lg transition-colors"
+          >
+            Review campaign →
+          </button>
+        </div>
+
+        {/* AI Summary */}
+        <div className="rounded-xl border border-border bg-card shadow-sm p-5">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-purple-500 shrink-0" />
+            <span className="font-semibold text-sm">AI Summary</span>
+            <span className="text-xs text-muted-foreground">Updated just now</span>
+            <span className="ml-auto bg-blue-50 text-blue-600 border border-blue-200 text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0">
+              BETA
+            </span>
+          </div>
+
+          <div className="mt-3 space-y-0.5">
+            <div className="flex items-start gap-2.5 text-sm py-1">
+              <Zap className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+              <span>4 active campaigns currently running across your portfolio.</span>
+            </div>
+            <div className="flex items-start gap-2.5 text-sm py-1">
+              <AlertTriangle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+              <span>1 campaign needs attention — review at-risk campaigns now.</span>
+            </div>
+            <div className="flex items-start gap-2.5 text-sm py-1">
+              <DollarSign className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+              <span>$73,400 total spend tracked across all clients.</span>
+            </div>
+          </div>
+
+          <div className="mt-3 text-right">
+            <button
+              onClick={() => router.push("/campaigns")}
+              className="text-sm text-primary font-medium hover:underline"
+            >
+              View full AI report →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Row 3 — Recent Campaigns + Recent Clients ── */}
+      <div className="grid grid-cols-[1fr_280px] gap-4">
+
+        {/* Recent Campaigns */}
+        <div className="rounded-xl border border-border bg-card shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <span className="font-semibold text-sm">Recent Campaigns</span>
+              <span className="text-xs text-muted-foreground ml-2">
+                Latest activity across clients
+              </span>
             </div>
             <button
               onClick={() => router.push("/campaigns")}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-primary font-medium hover:underline"
             >
               View all
             </button>
           </div>
 
-          {atRiskCampaignsList.length === 0 ? (
-            <div className="flex flex-col items-center text-center gap-2 py-8">
-              <div className="h-10 w-10 rounded-full bg-green-50 flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-              </div>
-              <p className="text-sm font-medium">All campaigns on track</p>
-              <p className="text-xs text-muted-foreground">
-                No campaigns need attention right now.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {atRiskCampaignsList.map((campaign) => {
-                const daysLeft = campaign.deadline
-                  ? Math.ceil(
-                      (new Date(campaign.deadline).getTime() - Date.now()) /
-                        (1000 * 60 * 60 * 24)
-                    )
-                  : null;
-                return (
-                  <div
-                    key={campaign.id}
-                    onClick={() => router.push(`/campaigns/${campaign.id}`)}
-                    className="flex items-start justify-between p-3 rounded-lg border border-orange-200 bg-orange-50/40 cursor-pointer hover:bg-orange-50 transition-colors"
-                  >
-                    <div className="space-y-0.5 min-w-0">
-                      <p className="text-xs font-semibold truncate">
-                        {campaign.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {campaign.client?.name} · {campaign.platform}
-                      </p>
-                    </div>
-                    <div className="shrink-0 ml-2 text-right">
-                      {daysLeft !== null && (
-                        <p className={cn(
-                          "text-xs font-medium",
-                          daysLeft <= 3 ? "text-red-600" :
-                          daysLeft <= 7 ? "text-orange-600" :
-                          "text-muted-foreground"
-                        )}>
-                          {daysLeft <= 0 ? "Overdue" : `${daysLeft}d left`}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Campaign Health */}
-        <div className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-4">
-          <h2 className="text-sm font-semibold">Campaign Health</h2>
-          {!hasAnyCampaigns ? (
-            <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
-              <p className="text-sm text-muted-foreground">No campaigns yet</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => router.push("/campaigns/new")}
-              >
-                <Plus className="h-3.5 w-3.5 mr-1.5" />
-                Create Campaign
-              </Button>
-            </div>
-          ) : (
-            <DonutChart health={health} />
-          )}
-        </div>
-
-        {/* AI Summary */}
-        <div className="rounded-xl border border-zinc-200 bg-zinc-50 shadow-sm p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold">AI Summary</h2>
-            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
-              Beta
-            </span>
-          </div>
-
-          {!hasAnyCampaigns ? (
-            <div className="flex flex-col items-center justify-center py-6 text-center gap-3">
-              <p className="text-sm text-muted-foreground">
-                Add clients and run campaigns to generate AI insights
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => router.push("/clients/new")}
-              >
-                <Plus className="h-3.5 w-3.5 mr-1.5" />
-                Add Client
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-3">
-                <div className="p-3 rounded-lg border border-green-200 bg-green-50/50 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-3.5 w-3.5 text-green-500" />
-                    <p className="text-xs font-semibold">
-                      {stats.activeCampaigns} active campaign{stats.activeCampaigns !== 1 ? "s" : ""}
-                    </p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Currently running across your client portfolio.
-                  </p>
-                </div>
-
-                {stats.atRiskCampaigns > 0 && (
-                  <div className="p-3 rounded-lg border border-orange-200 bg-orange-50/50 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
-                      <p className="text-xs font-semibold">
-                        {stats.atRiskCampaigns} need{stats.atRiskCampaigns === 1 ? "s" : ""} attention
-                      </p>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Open each at-risk campaign and generate AI insights for recommendations.
-                    </p>
-                  </div>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                {["Campaign", "Client", "Platform", "Due", "Status", "Owner"].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      className="text-xs uppercase tracking-wide text-muted-foreground pb-2 text-left font-medium"
+                    >
+                      {h}
+                    </th>
+                  )
                 )}
-
-                <div className="p-3 rounded-lg border border-blue-200 bg-blue-50/50 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-3.5 w-3.5 text-blue-500" />
-                    <p className="text-xs font-semibold">
-                      ${stats.totalSpend.toLocaleString()} tracked
-                    </p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Total spend across all campaigns. Open campaigns to generate AI analysis.
-                  </p>
-                </div>
-              </div>
-
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full"
-                onClick={() => router.push("/campaigns")}
-              >
-                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                View all campaigns
-              </Button>
-            </>
-          )}
-        </div>
-
-      </div>
-
-      {/* Bottom Row — equal height Recent Campaigns + Recent Clients */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-
-        {/* Recent Campaigns */}
-        <div className="lg:col-span-2 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Recent Campaigns</h2>
-            <button
-              onClick={() => router.push("/campaigns")}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-            >
-              View all <ArrowRight className="h-3 w-3" />
-            </button>
-          </div>
-          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden flex flex-col flex-grow">
-            {recentCampaigns.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center gap-3 flex-grow">
-                <p className="text-sm text-muted-foreground">No campaigns yet</p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => router.push("/campaigns/new")}
+              </tr>
+            </thead>
+            <tbody>
+              {RECENT_CAMPAIGNS.map((c) => (
+                <tr
+                  key={c.id}
+                  onClick={() => router.push(`/campaigns/${c.id}`)}
+                  className="hover:bg-muted/40 cursor-pointer transition-colors"
                 >
-                  <Plus className="h-3.5 w-3.5 mr-1.5" />
-                  Create Campaign
-                </Button>
-              </div>
-            ) : (
-              <div className="divide-y divide-border flex-grow">
-                {recentCampaigns.map((campaign) => (
-                  <div
-                    key={campaign.id}
-                    onClick={() => router.push(`/campaigns/${campaign.id}`)}
-                    className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/40 cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
-                        {campaign.name[0]}
-                      </div>
-                      <div className="flex flex-col leading-tight">
-                        <span className="text-sm font-medium">{campaign.name}</span>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          {campaign.client && <span>{campaign.client.name}</span>}
-                          <span>·</span>
-                          <span>{campaign.platform}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      {campaign.deadline && (
-                        <span className="text-xs text-muted-foreground hidden sm:block">
-                          Due {new Date(campaign.deadline).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </span>
+                  <td className="py-2.5 pr-3 text-sm font-medium max-w-[180px] truncate">
+                    {c.name}
+                  </td>
+                  <td className="py-2.5 pr-3 text-sm text-muted-foreground whitespace-nowrap">
+                    {c.client}
+                  </td>
+                  <td className="py-2.5 pr-3 text-sm whitespace-nowrap">{c.platform}</td>
+                  <td className="py-2.5 pr-3 text-sm text-muted-foreground whitespace-nowrap">
+                    {c.due}
+                  </td>
+                  <td className="py-2.5 pr-3">
+                    <StatusBadge status={c.status} />
+                  </td>
+                  <td className="py-2.5">
+                    <div
+                      className={cn(
+                        "w-7 h-7 rounded-full text-white text-xs flex items-center justify-center font-medium",
+                        c.ownerBg
                       )}
-                      <span className={cn(
-                        "text-xs px-2.5 py-1 rounded-full font-medium border",
-                        statusStyles[campaign.status]
-                      )}>
-                        {statusLabel[campaign.status]}
-                      </span>
-                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    >
+                      {c.ownerInitials}
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {/* Recent Clients */}
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Recent Clients</h2>
+        <div className="rounded-xl border border-border bg-card shadow-sm p-5">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <span className="font-semibold text-sm">Recent Clients</span>
+              <p className="text-xs text-muted-foreground">Active accounts</p>
+            </div>
             <button
               onClick={() => router.push("/clients")}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              className="text-sm text-primary font-medium hover:underline"
             >
-              View all <ArrowRight className="h-3 w-3" />
+              View all
             </button>
           </div>
-          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden flex flex-col flex-grow">
-            {recentClients.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center gap-3 flex-grow">
-                <p className="text-sm text-muted-foreground">No clients yet</p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => router.push("/clients/new")}
+
+          {RECENT_CLIENTS.map((client) => (
+            <div
+              key={client.id}
+              onClick={() => router.push(`/clients/${client.id}`)}
+              className="flex items-center justify-between py-2.5 border-b border-border last:border-0 cursor-pointer hover:bg-muted/30 transition-colors -mx-2 px-2 rounded"
+            >
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold shrink-0",
+                    client.iconBg,
+                    client.iconColor
+                  )}
                 >
-                  <Plus className="h-3.5 w-3.5 mr-1.5" />
-                  Add Client
-                </Button>
+                  {client.initial}
+                </div>
+                <div>
+                  <p className="text-sm font-medium leading-tight">{client.name}</p>
+                  <p className="text-xs text-muted-foreground">{client.industry}</p>
+                </div>
               </div>
-            ) : (
-              <div className="divide-y divide-border flex-grow">
-                {recentClients.map((client) => (
-                  <div
-                    key={client.id}
-                    onClick={() => router.push(`/clients/${client.id}`)}
-                    className="flex items-center justify-between px-4 py-3.5 hover:bg-muted/40 cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
-                        {client.name[0]}
-                      </div>
-                      <div className="flex flex-col leading-tight">
-                        <span className="text-sm font-medium">{client.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {client.industry ?? "No industry"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        {client.campaignCount} campaign{client.campaignCount !== 1 ? "s" : ""}
-                      </span>
-                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-                    </div>
-                  </div>
-                ))}
+              <div className="text-right shrink-0">
+                <p className="text-sm font-semibold">{client.campaigns}</p>
+                <p className="text-[10px] uppercase text-muted-foreground tracking-wide">
+                  Campaigns
+                </p>
               </div>
-            )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Row 4 — Campaign Health ── */}
+      <div className="rounded-xl border border-border bg-card shadow-sm p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="font-semibold text-sm">Campaign Health</span>
+            <span className="text-xs text-muted-foreground ml-2">
+              Distribution across 10 campaigns
+            </span>
           </div>
+          <span className="text-2xl font-bold">10</span>
         </div>
 
+        {/* Segmented bar */}
+        <div className="w-full h-2.5 rounded-full overflow-hidden flex mt-3">
+          <div className="flex-[4] bg-green-500" />
+          <div className="flex-[1] bg-red-500" />
+          <div className="flex-[2] bg-blue-500" />
+          <div className="flex-[1] bg-yellow-400" />
+          <div className="flex-[2] bg-zinc-300" />
+        </div>
+
+        {/* Legend */}
+        <div className="grid grid-cols-5 gap-4 mt-4">
+          {[
+            { label: "Active", dot: "bg-green-500", pct: "40%", count: 4 },
+            { label: "At Risk", dot: "bg-red-500", pct: "10%", count: 1 },
+            { label: "Completed", dot: "bg-blue-500", pct: "20%", count: 2 },
+            { label: "Planned", dot: "bg-yellow-400", pct: "10%", count: 1 },
+            { label: "Archived", dot: "bg-zinc-300", pct: "20%", count: 2 },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={cn("w-2.5 h-2.5 rounded-full shrink-0", item.dot)}
+                />
+                <span className="text-sm text-muted-foreground">{item.label}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground">{item.pct}</span>
+                <span className="text-sm font-semibold ml-1">{item.count}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
     </div>

@@ -1,5 +1,3 @@
-// src/features/app-shell/components/Sidebar.tsx
-
 "use client";
 
 import Link from "next/link";
@@ -10,40 +8,40 @@ import {
   Megaphone,
   CheckSquare,
   Calendar,
-  BarChart3,
+  BarChart2,
   Sparkles,
-  Users2,
+  UsersRound,
   FileText,
   Plug,
   Settings,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 type NavItem = {
   label: string;
   icon: React.ElementType;
   href: string;
+  badge?: string;
   soon?: boolean;
 };
 
-const mainNav: NavItem[] = [
+const workspaceNav: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { label: "Clients", icon: Users, href: "/clients" },
   { label: "Campaigns", icon: Megaphone, href: "/campaigns" },
   { label: "Tasks", icon: CheckSquare, href: "/tasks", soon: true },
   { label: "Calendar", icon: Calendar, href: "/calendar", soon: true },
-  { label: "Reports", icon: BarChart3, href: "/reports", soon: true },
-  { label: "AI Reports", icon: Sparkles, href: "/ai-reports", soon: true },
+  { label: "Reports", icon: BarChart2, href: "/reports", soon: true },
+  { label: "AI Reports", icon: Sparkles, href: "/ai-reports", badge: "AI", soon: true },
 ];
 
-const managementNav: NavItem[] = [
-  { label: "Team", icon: Users2, href: "/team", soon: true },
+const manageNav: NavItem[] = [
+  { label: "Team", icon: UsersRound, href: "/team", soon: true },
   { label: "Documents", icon: FileText, href: "/documents", soon: true },
   { label: "Integrations", icon: Plug, href: "/integrations", soon: true },
   { label: "Settings", icon: Settings, href: "/settings", soon: true },
 ];
 
-export function Sidebar({ collapsed }: { collapsed?: boolean }) {
+export function Sidebar() {
   const pathname = usePathname();
 
   const isActive = (href: string) => {
@@ -52,180 +50,94 @@ export function Sidebar({ collapsed }: { collapsed?: boolean }) {
   };
 
   return (
-    <aside
-      className={`
-        border-r bg-sidebar flex flex-col py-4 shrink-0
-        transition-all duration-200
-        ${collapsed ? "w-16 px-2" : "w-64 px-3"}
-      `}
-    >
+    <aside className="w-[160px] h-full bg-[#0f1117] flex flex-col py-4">
       {/* Logo */}
-
-      <div className={`mb-6 ${collapsed ? "flex justify-center" : "px-2"}`}>
-        {!collapsed ? (
-          <div className="relative z-10 flex items-center gap-2.5">
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-lg shadow-lg"
-              style={{
-                background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-                boxShadow: "0 4px 14px -2px rgba(99, 102, 241, 0.5)",
-              }}
-            >
-              <Sparkles className="h-5 w-5 text-white" strokeWidth={2.5} />
-            </div>
-            <span className="text-base font-semibold tracking-tight">
-              Marketiqo
-            </span>
+      <div className="px-3 mb-2">
+        <div className="flex items-center gap-2">
+          <div
+            className="flex h-7 w-7 items-center justify-center rounded-md shrink-0"
+            style={{ background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)" }}
+          >
+            <Sparkles className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
           </div>
-        ) : (
-          <div className="relative z-10 flex items-center gap-2.5">
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-lg shadow-lg"
-              style={{
-                background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-                boxShadow: "0 4px 14px -2px rgba(99, 102, 241, 0.5)",
-              }}
-            >
-              <Sparkles className="h-5 w-5 text-white" strokeWidth={2.5} />
-            </div>
+          <div>
+            <p className="text-white font-semibold text-sm leading-tight">Marketiqo</p>
+            <p className="text-zinc-500 text-[10px] leading-tight">AI Marketing Suite</p>
           </div>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <div className="space-y-6">
-        {/* Main Navigation */}
-        <div className="space-y-1">
-          {mainNav.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.href);
-
-            if (item.soon) {
-              return (
-                <div
-                  key={item.label}
-                  className={`
-                    flex items-center px-3 py-2 rounded-lg cursor-default
-                    text-sm font-normal leading-5 tracking-tight
-                    text-muted-foreground opacity-60
-                    ${collapsed ? "justify-center" : "gap-2"}
-                  `}
-                >
-                  <Icon className="h-4 w-4" />
-                  {!collapsed && (
-                    <>
-                      {item.label}
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground ml-auto">
-                        Soon
-                      </span>
-                    </>
-                  )}
-                </div>
-              );
-            }
-
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={`
-                  flex items-center px-3 py-2 rounded-lg transition-all
-                  text-sm font-normal leading-5 tracking-tight
-                  ${collapsed ? "justify-center" : "gap-2"}
-                  ${
-                    active
-                      ? "bg-muted text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                  }
-                `}
-              >
-                <Icon className={`h-4 w-4 ${active ? "text-primary" : ""}`} />
-                {!collapsed && item.label}
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-sidebar-border" />
-
-        {/* Management */}
-        <div className="space-y-2">
-          {!collapsed && (
-            <div className="px-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              Management
-            </div>
-          )}
-          {managementNav.map((item) => {
-            const Icon = item.icon;
-
-            if (item.soon) {
-              return (
-                <div
-                  key={item.label}
-                  className={`
-                    flex items-center px-3 py-2 rounded-lg cursor-default
-                    text-sm font-normal leading-5 tracking-tight
-                    text-muted-foreground opacity-60
-                    ${collapsed ? "justify-center" : "gap-2"}
-                  `}
-                >
-                  <Icon className="h-4 w-4" />
-                  {!collapsed && (
-                    <>
-                      {item.label}
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground ml-auto">
-                        Soon
-                      </span>
-                    </>
-                  )}
-                </div>
-              );
-            }
-
-            const active = isActive(item.href);
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={`
-                  flex items-center px-3 py-2 rounded-lg transition-all
-                  text-sm font-normal leading-5 tracking-tight
-                  ${collapsed ? "justify-center" : "gap-2"}
-                  ${
-                    active
-                      ? "bg-muted text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                  }
-                `}
-              >
-                <Icon className={`h-4 w-4 ${active ? "text-primary" : ""}`} />
-                {!collapsed && item.label}
-              </Link>
-            );
-          })}
         </div>
       </div>
 
-      {/* Bottom */}
-      <div className="mt-auto pt-6">
-        {!collapsed ? (
-          <div className="rounded-lg border border-sidebar-border p-4 space-y-2 bg-muted/40">
-            <p className="text-sm font-medium tracking-tight">Upgrade to Pro</p>
-            <p className="text-xs text-muted-foreground leading-5">
-              Unlock advanced insights and reports
-            </p>
-            <Button size="sm" className="w-full">
-              Upgrade Now
-            </Button>
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <Button size="icon" variant="ghost">
-              <Sparkles className="h-4 w-4 text-primary" />
-            </Button>
-          </div>
-        )}
+      {/* Nav */}
+      <div className="flex-1 overflow-y-auto px-1.5">
+        <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium px-3 mt-5 mb-1">
+          Workspace
+        </p>
+        {workspaceNav.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item.href);
+
+          if (item.soon) {
+            return (
+              <div
+                key={item.label}
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm text-zinc-600 cursor-default"
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
+                {item.badge && (
+                  <span className="bg-purple-600 text-white text-[9px] px-1.5 py-0.5 rounded-full ml-auto shrink-0">
+                    {item.badge}
+                  </span>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={`flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                active
+                  ? "bg-white/10 text-white font-medium"
+                  : "text-zinc-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{item.label}</span>
+            </Link>
+          );
+        })}
+
+        <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium px-3 mt-5 mb-1">
+          Manage
+        </p>
+        {manageNav.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div
+              key={item.label}
+              className="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm text-zinc-600 cursor-default"
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{item.label}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Upgrade card */}
+      <div className="px-2 mt-3">
+        <div className="bg-gradient-to-br from-purple-900/60 to-blue-900/40 rounded-xl p-3">
+          <Sparkles className="h-4 w-4 text-purple-400 mb-1" />
+          <p className="text-sm font-semibold text-white">Upgrade to Pro</p>
+          <p className="text-xs text-zinc-400 mt-0.5 leading-tight">
+            Unlock unlimited AI reports & insights.
+          </p>
+          <button className="w-full bg-white text-black text-xs font-medium py-1.5 rounded-lg mt-2.5 hover:bg-zinc-100 transition-colors">
+            Upgrade Now
+          </button>
+        </div>
       </div>
     </aside>
   );
