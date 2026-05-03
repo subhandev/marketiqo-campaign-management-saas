@@ -2,24 +2,27 @@
 
 "use client";
 
+import { useState } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Header } from "./components/Header";
+import { cn } from "@/lib/utils";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex h-screen overflow-hidden bg-[#f7f8fa]">
-      {/* Sidebar — fixed */}
-      <div className="fixed left-0 top-0 w-[160px] h-full z-20">
-        <Sidebar />
-      </div>
+  const [collapsed, setCollapsed] = useState(false);
 
-      {/* Main */}
-      <div className="ml-[160px] flex-1 flex flex-col min-h-screen">
-        <div className="sticky top-0 z-10">
-          <Header />
-        </div>
-        <main className="flex-1 overflow-y-auto bg-[#f7f8fa] p-6">
-          <div className="max-w-7xl mx-auto space-y-4">{children}</div>
+  return (
+    <div className="flex h-screen overflow-hidden bg-[hsl(var(--background))]">
+      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />
+
+      <div
+        className={cn(
+          "flex-1 flex flex-col overflow-hidden transition-[margin-left] duration-200 ease-in-out",
+          collapsed ? "ml-14" : "ml-64"
+        )}
+      >
+        <Header />
+        <main className="flex-1 overflow-y-auto bg-[hsl(var(--background))]">
+          <div className="max-w-[1400px] mx-auto px-6 py-6">{children}</div>
         </main>
       </div>
     </div>

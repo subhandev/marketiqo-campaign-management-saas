@@ -17,49 +17,60 @@ export function Header() {
     .slice(0, 2);
 
   return (
-    <header className="bg-white border-b border-border h-14 px-6 flex items-center justify-between">
-      {/* Left — Search */}
-      <div className="flex items-center gap-2 bg-muted/60 rounded-lg px-3 h-9 w-[340px]">
-        <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+    <header
+      className="h-14 px-6 flex items-center justify-between sticky top-0 z-10 border-b border-[hsl(var(--border))] backdrop-blur-sm"
+      style={{ background: "hsl(var(--background) / 0.85)" }}
+    >
+      {/* Left — search */}
+      <div className="flex items-center gap-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg px-3 h-9 w-80">
+        <Search size={14} className="text-[hsl(var(--muted-foreground))] shrink-0" />
         <input
           placeholder="Search campaigns, clients, tasks..."
-          className="bg-transparent text-sm outline-none flex-1 text-foreground placeholder:text-muted-foreground"
+          className="bg-transparent text-sm outline-none flex-1 text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]"
         />
-        <kbd className="bg-muted border border-border text-muted-foreground text-[10px] px-1.5 py-0.5 rounded shrink-0">
+        <kbd className="ml-auto text-[10px] text-[hsl(var(--muted-foreground))] bg-[hsl(var(--muted))] border border-[hsl(var(--border))] px-1.5 py-0.5 rounded font-mono shrink-0">
           ⌘K
         </kbd>
       </div>
 
       {/* Right */}
-      <div className="flex items-center gap-3">
-        <button className="text-muted-foreground hover:text-foreground transition-colors">
-          <CircleHelp className="h-[18px] w-[18px]" />
+      <div className="flex items-center gap-2">
+        <button className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-[hsl(var(--muted))] transition-colors">
+          <CircleHelp size={16} className="text-[hsl(var(--muted-foreground))]" />
         </button>
 
         <div className="relative">
-          <button className="text-muted-foreground hover:text-foreground transition-colors">
-            <Bell className="h-[18px] w-[18px]" />
+          <button className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-[hsl(var(--muted))] transition-colors">
+            <Bell size={16} className="text-[hsl(var(--muted-foreground))]" />
           </button>
-          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-red-500 rounded-full pointer-events-none" />
+          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full pointer-events-none" />
         </div>
 
-        <div className="h-6 w-px bg-border" />
+        <div className="w-px h-6 bg-[hsl(var(--border))] mx-1" />
 
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-zinc-800 text-white text-xs flex items-center justify-center font-medium shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+            style={{
+              background: "hsl(var(--primary))",
+              color: "hsl(var(--primary-foreground))",
+            }}
+          >
             {initials}
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="text-sm font-medium">{fullName}</span>
-            <span className="text-[10px] text-muted-foreground">Admin</span>
+            <span className="text-sm font-medium text-[hsl(var(--foreground))]">
+              {fullName}
+            </span>
+            <span className="text-[10px] text-[hsl(var(--muted-foreground))]">Admin</span>
           </div>
         </div>
 
         <button
           onClick={() => router.push("/campaigns/new")}
-          className="bg-black text-white text-sm font-medium px-4 h-9 rounded-lg hover:bg-zinc-800 flex items-center gap-1.5 transition-colors"
+          className="ml-2 h-9 px-4 rounded-lg bg-gradient-brand text-white text-sm font-medium flex items-center gap-1.5 hover:opacity-90 transition-opacity shadow-sm"
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus size={14} />
           New Campaign
         </button>
       </div>
