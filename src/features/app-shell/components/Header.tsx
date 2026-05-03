@@ -23,7 +23,10 @@ export function Header() {
     >
       {/* Left — search */}
       <div className="flex items-center gap-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg px-3 h-9 w-80">
-        <Search size={14} className="text-[hsl(var(--muted-foreground))] shrink-0" />
+        <Search
+          size={14}
+          className="text-[hsl(var(--muted-foreground))] shrink-0"
+        />
         <input
           placeholder="Search campaigns, clients, tasks..."
           className="bg-transparent text-sm outline-none flex-1 text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]"
@@ -35,8 +38,19 @@ export function Header() {
 
       {/* Right */}
       <div className="flex items-center gap-2">
+        <button
+          onClick={() => router.push("/campaigns/new")}
+          className="ml-2 h-9 px-4 rounded-lg bg-gradient-brand text-white text-sm font-medium flex items-center gap-1.5 hover:opacity-90 transition-opacity shadow-sm"
+        >
+          <Plus size={14} />
+          New Campaign
+        </button>
+
         <button className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-[hsl(var(--muted))] transition-colors">
-          <CircleHelp size={16} className="text-[hsl(var(--muted-foreground))]" />
+          <CircleHelp
+            size={16}
+            className="text-[hsl(var(--muted-foreground))]"
+          />
         </button>
 
         <div className="relative">
@@ -62,17 +76,11 @@ export function Header() {
             <span className="text-sm font-medium text-[hsl(var(--foreground))]">
               {fullName}
             </span>
-            <span className="text-[10px] text-[hsl(var(--muted-foreground))]">Admin</span>
+            <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+              Admin
+            </span>
           </div>
         </div>
-
-        <button
-          onClick={() => router.push("/campaigns/new")}
-          className="ml-2 h-9 px-4 rounded-lg bg-gradient-brand text-white text-sm font-medium flex items-center gap-1.5 hover:opacity-90 transition-opacity shadow-sm"
-        >
-          <Plus size={14} />
-          New Campaign
-        </button>
       </div>
     </header>
   );

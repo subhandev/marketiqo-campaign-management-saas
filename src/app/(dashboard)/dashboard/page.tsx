@@ -544,12 +544,7 @@ export default function DashboardPage() {
             Here&apos;s what&apos;s happening across your campaigns today.
           </p>
         </div>
-        <div className="flex items-center gap-1.5 mt-1.5">
-          <span className="w-2 h-2 rounded-full bg-[hsl(var(--success))]" />
-          <span className="text-xs text-[hsl(var(--muted-foreground))]">
-            All systems operational
-          </span>
-        </div>
+        
       </div>
 
       {/* ── Row 1 — KPI cards ── */}
