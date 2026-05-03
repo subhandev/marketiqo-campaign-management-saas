@@ -5,6 +5,7 @@ import { CampaignDetail } from "@/features/campaigns/components/CampaignDetail";
 import { CampaignDetailSkeleton } from "@/features/campaigns/components/CampaignDetailSkeleton";
 import { useCampaign } from "@/features/campaigns/hooks/useCampaigns";
 
+
 export default function CampaignDetailPage({
   params,
 }: {

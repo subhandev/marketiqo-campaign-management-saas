@@ -7,6 +7,7 @@ export type Metric = {
   clicks: number;
   spend: number;
   conversions: number | null;
+  revenue: number | null;
   date: string;
 };
 
@@ -62,4 +63,13 @@ export type CampaignsResponse = {
 
 export type CampaignResponse = {
   campaign: Campaign;
+};
+
+export type CreateMetricInput = {
+  date: string;
+  impressions?: number;
+  clicks?: number;
+  spend?: number;
+  conversions?: number;
+  revenue?: number;
 };

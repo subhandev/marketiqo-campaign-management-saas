@@ -7,12 +7,12 @@ datasource db {
 }
 
 model User {
-  id          String      @id @default(cuid())
-  clerkUserId String      @unique
-  email       String      @unique
-  createdAt   DateTime    @default(now())
+  id          String   @id @default(cuid())
+  clerkUserId String   @unique
+  email       String   @unique
+  createdAt   DateTime @default(now())
 
-  workspaces  Workspace[]
+  workspaces Workspace[]
 }
 
 model Workspace {
@@ -22,7 +22,7 @@ model Workspace {
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
 
-  clients   Client[]
+  clients Client[]
 }
 
 model Client {
@@ -30,25 +30,25 @@ model Client {
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
 
-  name        String
-  company     String?
-  industry    String?
-  email       String?
-  phone     String?
-  website   String?
-  notes       String?
-  status      String    @default("active") // active, inactive
+  name     String
+  company  String?
+  industry String?
+  email    String?
+  phone    String?
+  website  String?
+  notes    String?
+  status   String  @default("active") // active, inactive
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  campaigns   Campaign[]
+  campaigns Campaign[]
 }
 
 model Campaign {
-  id          String    @id @default(cuid())
-  clientId    String
-  client      Client    @relation(fields: [clientId], references: [id])
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
 
   name        String
   description String?
@@ -61,29 +61,32 @@ model Campaign {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  metrics     Metric[]
-  insights    Insight[]
+  metrics  Metric[]
+  insights Insight[]
 }
 
 model Metric {
-  id          String   @id @default(cuid())
-  campaignId  String
-  campaign    Campaign @relation(fields: [campaignId], references: [id])
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
 
   impressions Int
   clicks      Int
   spend       Float
   conversions Int?
   date        DateTime
+  revenue     Float?
+
+  @@unique([campaignId, date])
 }
 
 model Insight {
-  id          String   @id @default(cuid())
-  campaignId  String
-  campaign    Campaign @relation(fields: [campaignId], references: [id])
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
 
-  type        String
-  content     String
-  score       Float?
-  createdAt   DateTime @default(now())
+  type      String
+  content   String
+  score     Float?
+  createdAt DateTime @default(now())
 }

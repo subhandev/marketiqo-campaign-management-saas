@@ -14,10 +14,23 @@ export const createCampaignSchema = z.object({
     .optional(),
   platform: z.string().min(1, "Platform is required"),
   goal: z.string().optional(),
-  status: z.enum(["planned", "active", "at_risk", "completed", "archived"]).default("planned"),
+  status: z
+    .enum(["planned", "active", "at_risk", "completed", "archived"])
+    .default("planned"),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   deadline: z.string().optional(),
 });
 
 export type CreateCampaignSchema = z.infer<typeof createCampaignSchema>;
+
+export const createMetricSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  impressions: z.number().min(0).optional(),
+  clicks: z.number().min(0).optional(),
+  spend: z.number().min(0).optional(),
+  conversions: z.number().min(0).optional(),
+  revenue: z.number().min(0).optional(),
+});
+
+export type CreateMetricInput = z.infer<typeof createMetricSchema>;
