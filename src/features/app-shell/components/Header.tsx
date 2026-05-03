@@ -1,12 +1,17 @@
 "use client";
 
 import { Search, Bell, CircleHelp, Plus } from "lucide-react";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
 
 export function Header() {
   const { user } = useUser();
+  const { signOut } = useClerk();
   const router = useRouter();
+
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   const fullName = user?.fullName ?? user?.username ?? "User";
   const initials = fullName
@@ -16,70 +21,91 @@ export function Header() {
     .toUpperCase()
     .slice(0, 2);
 
+  // close on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
   return (
-    <header
-      className="h-14 px-6 flex items-center justify-between sticky top-0 z-10 border-b border-[hsl(var(--border))] backdrop-blur-sm"
+    <header className="h-14 px-6 flex items-center justify-between sticky top-0 z-10 border-b border-[hsl(var(--border))] backdrop-blur-sm"
       style={{ background: "hsl(var(--background) / 0.85)" }}
     >
-      {/* Left — search */}
+      {/* Left */}
       <div className="flex items-center gap-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg px-3 h-9 w-80">
-        <Search
-          size={14}
-          className="text-[hsl(var(--muted-foreground))] shrink-0"
-        />
+        <Search size={14} className="text-[hsl(var(--muted-foreground))]" />
         <input
-          placeholder="Search campaigns, clients, tasks..."
-          className="bg-transparent text-sm outline-none flex-1 text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]"
+          placeholder="Search..."
+          className="bg-transparent text-sm outline-none flex-1"
         />
-        <kbd className="ml-auto text-[10px] text-[hsl(var(--muted-foreground))] bg-[hsl(var(--muted))] border border-[hsl(var(--border))] px-1.5 py-0.5 rounded font-mono shrink-0">
-          ⌘K
-        </kbd>
       </div>
 
       {/* Right */}
       <div className="flex items-center gap-2">
         <button
           onClick={() => router.push("/campaigns/new")}
-          className="ml-2 h-9 px-4 rounded-lg bg-gradient-brand text-white text-sm font-medium flex items-center gap-1.5 hover:opacity-90 transition-opacity shadow-sm"
+          className="h-9 px-4 rounded-lg bg-gradient-brand text-white text-sm flex items-center gap-1.5"
         >
           <Plus size={14} />
           New Campaign
         </button>
 
-        <button className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-[hsl(var(--muted))] transition-colors">
-          <CircleHelp
-            size={16}
-            className="text-[hsl(var(--muted-foreground))]"
-          />
+        <button className="w-8 h-8 flex items-center justify-center">
+          <CircleHelp size={16} />
         </button>
 
         <div className="relative">
-          <button className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-[hsl(var(--muted))] transition-colors">
-            <Bell size={16} className="text-[hsl(var(--muted-foreground))]" />
-          </button>
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full pointer-events-none" />
+          <Bell size={16} />
         </div>
 
         <div className="w-px h-6 bg-[hsl(var(--border))] mx-1" />
 
-        <div className="flex items-center gap-2.5">
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
-            style={{
-              background: "hsl(var(--primary))",
-              color: "hsl(var(--primary-foreground))",
-            }}
+        {/* Profile */}
+        <div ref={ref} className="relative">
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="flex items-center gap-2.5 hover:bg-[hsl(var(--muted))] px-2 py-1 rounded-lg"
           >
-            {initials}
-          </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm font-medium text-[hsl(var(--foreground))]">
-              {fullName}
-            </span>
-            <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
-              Admin
-            </span>
-          </div>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold"
+              style={{
+                background: "hsl(var(--primary))",
+                color: "hsl(var(--primary-foreground))",
+              }}
+            >
+              {initials}
+            </div>
+
+            <div className="flex flex-col text-left">
+              <span className="text-sm font-medium">{fullName}</span>
+              <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                Admin
+              </span>
+            </div>
+          </button>
+
+          {/* Dropdown */}
+          {open && (
+            <div className="absolute right-0 mt-2 w-44 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg shadow-md p-1 z-50">
+              <button
+                onClick={() => router.push("/settings")}
+                className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-[hsl(var(--muted))]"
+              >
+                Settings
+              </button>
+
+              <button
+                onClick={() => signOut(() => router.push("/sign-in"))}
+                className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-red-50 text-red-600"
+              >
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>
