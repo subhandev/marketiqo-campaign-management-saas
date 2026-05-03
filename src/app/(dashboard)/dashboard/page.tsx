@@ -303,6 +303,12 @@ const HEALTH_SEGMENTS = [
   { label: "Archived", key: "archived" as const,  bar: "bg-[hsl(var(--muted-foreground)/0.25)]",dot: "bg-[hsl(var(--muted-foreground)/0.25)]" },
 ];
 
+const INSIGHT_ICONS = [
+  { icon: Zap,           iconClass: "text-[hsl(var(--brand))]"   },
+  { icon: AlertTriangle, iconClass: "text-[hsl(var(--warning))]" },
+  { icon: DollarSign,    iconClass: "text-[hsl(var(--success))]" },
+];
+
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 
 function LoadingSkeleton() {
@@ -351,6 +357,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   // Captured when data loads so deadline diffs are stable across re-renders
   const [fetchedAt, setFetchedAt] = useState(0);
+  const [insights, setInsights] = useState<string[] | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/dashboard")
@@ -360,6 +368,13 @@ export default function DashboardPage() {
         setFetchedAt(Date.now());
       })
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/dashboard/insights", { method: "POST" })
+      .then((r) => r.json())
+      .then((d) => setInsights(d.insights ?? null))
+      .finally(() => setInsightsLoading(false));
   }, []);
 
   if (loading) return <LoadingSkeleton />;
@@ -507,29 +522,6 @@ export default function DashboardPage() {
       count: value,
     };
   });
-
-  // ── AI Summary insights ────────────────────────────────────────────────────
-
-  const aiInsights = [
-    {
-      icon: Zap,
-      iconClass: "text-[hsl(var(--brand))]",
-      text: `${stats.activeCampaigns} active campaign${stats.activeCampaigns !== 1 ? "s" : ""} currently running across your portfolio.`,
-    },
-    {
-      icon: AlertTriangle,
-      iconClass: "text-[hsl(var(--warning))]",
-      text:
-        stats.atRiskCampaigns > 0
-          ? `${stats.atRiskCampaigns} campaign${stats.atRiskCampaigns !== 1 ? "s" : ""} need${stats.atRiskCampaigns === 1 ? "s" : ""} attention — review at-risk campaigns now.`
-          : "All campaigns are on track — no immediate action needed.",
-    },
-    {
-      icon: DollarSign,
-      iconClass: "text-[hsl(var(--success))]",
-      text: `${formatSpend(stats.totalSpend)} total spend tracked across all clients.`,
-    },
-  ];
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -684,7 +676,7 @@ export default function DashboardPage() {
                 className="text-xs mt-0.5"
                 style={{ color: "hsl(var(--brand) / 0.7)" }}
               >
-                Updated just now
+                {insightsLoading ? "Generating insights…" : "Updated just now"}
               </p>
             </div>
             <span className="ml-auto bg-white/70 text-[hsl(var(--brand))] border border-[hsl(var(--brand)/0.2)] text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0">
@@ -693,20 +685,31 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-2 mt-3">
-            {aiInsights.map(({ icon: Icon, iconClass, text }) => (
-              <div
-                key={text}
-                className="flex items-start gap-2.5 p-2.5 rounded-lg bg-white/60 border border-[hsl(var(--brand)/0.12)] backdrop-blur-sm"
-              >
-                <Icon size={13} className={cn("mt-0.5 shrink-0", iconClass)} />
-                <span
-                  className="text-sm"
-                  style={{ color: "hsl(var(--accent-foreground) / 0.9)" }}
-                >
-                  {text}
-                </span>
+            {insightsLoading ? (
+              <div className="animate-pulse space-y-2">
+                <div className="h-4 bg-muted/50 rounded w-full" />
+                <div className="h-4 bg-muted/50 rounded w-5/6" />
+                <div className="h-4 bg-muted/50 rounded w-4/6" />
               </div>
-            ))}
+            ) : (
+              (insights ?? []).map((text, i) => {
+                const { icon: Icon, iconClass } = INSIGHT_ICONS[i % INSIGHT_ICONS.length];
+                return (
+                  <div
+                    key={i}
+                    className="flex items-start gap-2.5 p-2.5 rounded-lg bg-white/60 border border-[hsl(var(--brand)/0.12)] backdrop-blur-sm"
+                  >
+                    <Icon size={13} className={cn("mt-0.5 shrink-0", iconClass)} />
+                    <span
+                      className="text-sm"
+                      style={{ color: "hsl(var(--accent-foreground) / 0.9)" }}
+                    >
+                      {text}
+                    </span>
+                  </div>
+                );
+              })
+            )}
           </div>
 
           <div
