@@ -22,7 +22,7 @@ export const createCampaignSchema = z.object({
   deadline: z.string().optional(),
 });
 
-export type CreateCampaignSchema = z.infer<typeof createCampaignSchema>;
+export type CreateCampaignInput = z.input<typeof createCampaignSchema>;
 
 export const createMetricSchema = z.object({
   date: z.string().min(1, "Date is required"),

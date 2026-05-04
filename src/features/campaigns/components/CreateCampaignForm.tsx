@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { useClients } from "@/features/clients/hooks/useClients";
 import { useCampaignMutations } from "@/features/campaigns/hooks/useCampaigns";
-import { createCampaignSchema, CreateCampaignSchema } from "@/features/campaigns/schemas";
+import { createCampaignSchema, CreateCampaignInput } from "@/features/campaigns/schemas";
 import { cn } from "@/lib/utils";
 
 const PLATFORMS = [
@@ -64,7 +64,7 @@ export function CreateCampaignForm() {
     watch,
     setValue,
     formState: { errors },
-  } = useForm<CreateCampaignSchema>({
+  } = useForm<CreateCampaignInput>({
     resolver: zodResolver(createCampaignSchema),
     defaultValues: {
       name: "",
@@ -83,7 +83,7 @@ export function CreateCampaignForm() {
 
   const selectedClient = clients.find((c) => c.id === watched.clientId);
 
-  const onSubmit = async (data: CreateCampaignSchema) => {
+  const onSubmit = async (data: CreateCampaignInput) => {
     try {
       await create(data);
       router.push("/campaigns");
