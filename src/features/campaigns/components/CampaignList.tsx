@@ -3,7 +3,7 @@
 import { useCampaigns } from '../hooks/useCampaigns'
 
 export function CampaignList() {
-  const { data, loading, error } = useCampaigns()
+  const { campaigns, loading, error } = useCampaigns()
 
   if (loading) return <p>Loading...</p>
   if (error) return <p>Error: {error}</p>
@@ -12,7 +12,7 @@ export function CampaignList() {
     <div>
       <h2>Campaigns</h2>
       <ul>
-        {data.map((c) => (
+        {campaigns.map((c) => (
           <li key={c.id}>
             {c.name} ({c.platform})
           </li>
