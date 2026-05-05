@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Sparkles, MoreHorizontal, Search, TrendingUp, TrendingDown } from "lucide-react";
+import { Plus, Sparkles, MoreHorizontal, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,

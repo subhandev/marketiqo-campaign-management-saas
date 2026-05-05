@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Bell, CircleHelp, Plus } from "lucide-react";
+import { Search, Bell, CircleHelp } from "lucide-react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";

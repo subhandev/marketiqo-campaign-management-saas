@@ -265,7 +265,7 @@ export function ClientDetail({
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 cursor-pointer"
                 aria-label="Open menu"
               >
                 <MoreHorizontal className="h-4 w-4" />
