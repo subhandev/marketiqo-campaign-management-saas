@@ -9,10 +9,14 @@ import {
 
 const BASE_URL = "/api/campaigns";
 
-export async function fetchCampaigns(): Promise<CampaignsResponse> {
+export async function getCampaigns(): Promise<CampaignsResponse> {
   const res = await fetch(BASE_URL);
   if (!res.ok) throw new Error("Failed to fetch campaigns");
   return res.json();
+}
+
+export async function fetchCampaigns(): Promise<CampaignsResponse> {
+  return getCampaigns();
 }
 
 export async function fetchCampaign(id: string): Promise<CampaignResponse> {
@@ -21,6 +25,11 @@ export async function fetchCampaign(id: string): Promise<CampaignResponse> {
   return res.json();
 }
 
+export async function generateInsight(id: string): Promise<{ insight: string }> {
+  const res = await fetch(`${BASE_URL}/${id}/insights/generate`, { method: "POST" });
+  if (!res.ok) throw new Error("Failed to generate insight");
+  return res.json();
+}
 
 export async function createCampaign(data: CreateCampaignInput): Promise<CampaignResponse> {
   const res = await fetch(BASE_URL, {
@@ -54,10 +63,6 @@ export async function deleteCampaign(id: string): Promise<{ success: boolean }> 
   return res.json();
 }
 
-// ── Metrics ─────────────────────────────────────────
-
-
-
 export async function createMetric(
   campaignId: string,
   data: CreateMetricInput
@@ -76,14 +81,8 @@ export async function createMetric(
   return res.json();
 }
 
-export async function fetchMetrics(
-  campaignId: string
-): Promise<Metric[]> {
+export async function fetchMetrics(campaignId: string): Promise<Metric[]> {
   const res = await fetch(`/api/campaigns/${campaignId}/metrics`);
-
-  if (!res.ok) {
-    throw new Error("Failed to fetch metrics");
-  }
-
+  if (!res.ok) throw new Error("Failed to fetch metrics");
   return res.json();
 }

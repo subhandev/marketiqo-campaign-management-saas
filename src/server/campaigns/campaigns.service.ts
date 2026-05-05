@@ -1,17 +1,100 @@
-// src/server/campaigns/campaigns.service.ts
-
 import {
   getCampaignsByWorkspace,
+  getCampaignListItems,
+  getCampaignWithLatestMetric,
   getCampaignById,
   createCampaign,
   updateCampaign,
   deleteCampaign,
+  createInsight,
 } from "@/server/campaigns/campaigns.repository";
-import { CreateCampaignInput, UpdateCampaignInput } from "@/features/campaigns/types";
+import { CreateCampaignInput, UpdateCampaignInput, CampaignStatus } from "@/features/campaigns/types";
+import { openai } from "@/lib/openai";
+
+const STATUS_ORDER: Record<string, number> = {
+  at_risk: 0,
+  active: 1,
+  planned: 2,
+  completed: 3,
+  archived: 4,
+};
 
 export async function listCampaigns(workspaceId: string) {
   const campaigns = await getCampaignsByWorkspace(workspaceId);
   return { campaigns, total: campaigns.length };
+}
+
+export async function listCampaignItems(workspaceId: string) {
+  const raw = await getCampaignListItems(workspaceId);
+
+  const campaigns = raw.map((c) => {
+    const latest = c.metrics[0] ?? null;
+    const previous = c.metrics[1] ?? null;
+    const clicksChange =
+      latest && previous && previous.clicks > 0
+        ? (latest.clicks - previous.clicks) / previous.clicks
+        : null;
+
+    return {
+      id: c.id,
+      clientId: c.clientId,
+      name: c.name,
+      description: c.description,
+      platform: c.platform,
+      status: c.status as CampaignStatus,
+      goal: c.goal,
+      budget: c.budget,
+      startDate: c.startDate?.toISOString() ?? null,
+      endDate: c.endDate?.toISOString() ?? null,
+      deadline: c.deadline?.toISOString() ?? null,
+      createdAt: c.createdAt.toISOString(),
+      updatedAt: c.updatedAt.toISOString(),
+      client: c.client,
+      _count: c._count,
+      latestMetric: latest
+        ? {
+            spend: latest.spend,
+            clicks: latest.clicks,
+            conversions: latest.conversions,
+            date: latest.date.toISOString(),
+            clicksChange,
+          }
+        : null,
+      latestInsight: c.insights[0]
+        ? {
+            content: c.insights[0].content,
+            createdAt: c.insights[0].createdAt.toISOString(),
+          }
+        : null,
+    };
+  });
+
+  campaigns.sort(
+    (a, b) =>
+      (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99)
+  );
+
+  return { campaigns, total: campaigns.length };
+}
+
+export async function generateQuickInsight(campaignId: string, workspaceId: string) {
+  const campaign = await getCampaignWithLatestMetric(campaignId, workspaceId);
+  if (!campaign) throw new Error("Campaign not found");
+
+  const metric = campaign.metrics[0];
+  const prompt = `You are a marketing analyst. Given this campaign data, write a single sharp insight sentence (max 15 words) about its health or performance. Campaign: ${campaign.name}, Platform: ${campaign.platform}, Status: ${campaign.status}, Spend: ${metric?.spend ?? "N/A"}/${campaign.budget ?? "N/A"}, Clicks: ${metric?.clicks ?? "N/A"}, Conversions: ${metric?.conversions ?? "N/A"}. Respond with only the insight sentence, no preamble.`;
+
+  const completion = await openai.chat.completions.create({
+    model: "llama-3.1-8b-instant",
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: 60,
+    temperature: 0.7,
+  });
+
+  const content = completion.choices[0]?.message?.content?.trim() ?? "No insight available.";
+  await createInsight(campaignId, { type: "summary", content });
+
+  return { insight: content };
 }
 
 export async function getCampaign(id: string, clerkUserId: string) {

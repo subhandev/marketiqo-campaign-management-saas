@@ -59,6 +59,7 @@ model Campaign {
   platform    String
   status      String    @default("planned")
   goal        String?
+  budget      Float?
   startDate   DateTime?
   endDate     DateTime?
   deadline    DateTime?

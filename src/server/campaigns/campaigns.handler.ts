@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  listCampaigns,
+  listCampaignItems,
+  generateQuickInsight,
   getCampaign,
   addCampaign,
   editCampaign,
@@ -8,12 +9,23 @@ import {
 } from "@/server/campaigns/campaigns.service";
 import { CreateCampaignInput, UpdateCampaignInput } from "@/features/campaigns/types";
 
-export async function handleListCampaigns(clerkUserId: string) {
+export async function handleListCampaigns(workspaceId: string) {
   try {
-    const data = await listCampaigns(clerkUserId);
+    const data = await listCampaignItems(workspaceId);
     return NextResponse.json(data, { status: 200 });
   } catch {
     return NextResponse.json({ error: "Failed to fetch campaigns" }, { status: 500 });
+  }
+}
+
+export async function handleGenerateQuickInsight(campaignId: string, workspaceId: string) {
+  try {
+    const data = await generateQuickInsight(campaignId, workspaceId);
+    return NextResponse.json(data, { status: 200 });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Campaign not found")
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    return NextResponse.json({ error: "Failed to generate insight" }, { status: 500 });
   }
 }
 

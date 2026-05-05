@@ -28,6 +28,7 @@ export type Campaign = {
   platform: string;
   status: CampaignStatus;
   goal: string | null;
+  budget: number | null;
   startDate: string | null;
   endDate: string | null;
   deadline: string | null;
@@ -42,6 +43,19 @@ export type Campaign = {
   insights?: Insight[];
 };
 
+export type CampaignListItem = Omit<Campaign, "client" | "metrics" | "insights"> & {
+  client: { id: string; name: string };
+  latestMetric: {
+    spend: number;
+    clicks: number;
+    conversions: number | null;
+    date: string;
+    clicksChange: number | null;
+  } | null;
+  latestInsight: { content: string; createdAt: string } | null;
+  _count: { metrics: number };
+};
+
 export type CreateCampaignInput = {
   clientId: string;
   name: string;
@@ -49,6 +63,7 @@ export type CreateCampaignInput = {
   platform: string;
   status?: CampaignStatus;
   goal?: string;
+  budget?: number;
   startDate?: string;
   endDate?: string;
   deadline?: string;
@@ -57,7 +72,7 @@ export type CreateCampaignInput = {
 export type UpdateCampaignInput = Partial<CreateCampaignInput>;
 
 export type CampaignsResponse = {
-  campaigns: Campaign[];
+  campaigns: CampaignListItem[];
   total: number;
 };
 

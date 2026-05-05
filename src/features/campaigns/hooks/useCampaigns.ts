@@ -1,15 +1,85 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  fetchCampaigns,
+  getCampaigns,
   fetchCampaign,
   createCampaign,
   updateCampaign,
   deleteCampaign,
+  generateInsight,
 } from "@/features/campaigns/api/campaigns.api";
-import { Campaign, CreateCampaignInput, UpdateCampaignInput } from "@/features/campaigns/types";
+import {
+  CampaignListItem,
+  Campaign,
+  CreateCampaignInput,
+  UpdateCampaignInput,
+} from "@/features/campaigns/types";
+
+export function useCampaignList() {
+  const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    async function load() {
+      try {
+        setIsLoading(true);
+        const data = await getCampaigns();
+        setCampaigns(data.campaigns);
+
+        const needsInsight = data.campaigns.filter((c) => {
+          if (!c.latestMetric) return false;
+          if (!c.latestInsight) return true;
+          return new Date(c.latestMetric.date) > new Date(c.latestInsight.createdAt);
+        });
+
+        if (needsInsight.length > 0) {
+          setGeneratingIds(new Set(needsInsight.map((c) => c.id)));
+
+          Promise.all(
+            needsInsight.map(async (c) => {
+              try {
+                const result = await generateInsight(c.id);
+                setCampaigns((prev) =>
+                  prev.map((campaign) =>
+                    campaign.id === c.id
+                      ? {
+                          ...campaign,
+                          latestInsight: {
+                            content: result.insight,
+                            createdAt: new Date().toISOString(),
+                          },
+                        }
+                      : campaign
+                  )
+                );
+              } catch {
+                // silently ignore per-campaign insight failures
+              } finally {
+                setGeneratingIds((prev) => {
+                  const next = new Set(prev);
+                  next.delete(c.id);
+                  return next;
+                });
+              }
+            })
+          );
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load campaigns");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    load();
+  }, []);
+
+  return { campaigns, isLoading, error, generatingIds };
+}
 
 export function useCampaigns() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +88,7 @@ export function useCampaigns() {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchCampaigns();
+      const data = await getCampaigns();
       setCampaigns(data.campaigns);
       setTotal(data.total);
     } catch (err) {
@@ -28,7 +98,9 @@ export function useCampaigns() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
   return { campaigns, total, loading, error, refresh: load };
 }
 
@@ -50,7 +122,9 @@ export function useCampaign(id: string) {
     }
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
   return { campaign, loading, error, refresh: load };
 }
 
