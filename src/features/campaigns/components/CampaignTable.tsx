@@ -2,29 +2,28 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  MoreHorizontal,
-  Plus,
-  TrendingUp,
-  TrendingDown,
-  Sparkles,
-  LayoutGrid,
-  List,
-  Search,
-} from "lucide-react";
+import { Plus, Sparkles, MoreHorizontal, Search, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useCampaignList } from "@/features/campaigns/hooks/useCampaigns";
-import { CampaignListItem, CampaignStatus } from "@/features/campaigns/types";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useCampaignList } from "@/features/campaigns/hooks/useCampaignList";
+import { CampaignListItem } from "@/features/campaigns/types";
 import { cn } from "@/lib/utils";
 
-type FilterTab = "all" | CampaignStatus;
+type FilterTab = "all" | "needs_attention" | "active" | "planned" | "completed";
+
+const TAB_TO_STATUS: Record<string, string | null> = {
+  all: null,
+  needs_attention: "at_risk",
+  active: "active",
+  planned: "planned",
+  completed: "completed",
+};
 
 const PLATFORM_STYLES: Record<string, string> = {
   GOOGLE: "bg-blue-50 text-blue-700 border-blue-200",
@@ -34,24 +33,32 @@ const PLATFORM_STYLES: Record<string, string> = {
   X: "bg-zinc-100 text-zinc-600 border-zinc-200",
 };
 
-const STATUS_STYLES: Record<string, string> = {
-  at_risk: "bg-orange-50 text-orange-700 border-orange-200",
-  active: "bg-green-50 text-green-700 border-green-200",
-  planned: "bg-blue-50 text-blue-700 border-blue-200",
-  completed: "bg-zinc-100 text-zinc-500 border-zinc-200",
-  archived: "bg-zinc-100 text-zinc-500 border-zinc-200",
+const STATUS_BADGE: Record<string, { bg: string; dot: string }> = {
+  at_risk:   { bg: "bg-orange-50 text-orange-700 border-orange-200",  dot: "bg-orange-500" },
+  active:    { bg: "bg-green-50 text-green-700 border-green-200",     dot: "bg-green-500" },
+  planned:   { bg: "bg-blue-50 text-blue-700 border-blue-200",        dot: "bg-blue-400" },
+  completed: { bg: "bg-zinc-100 text-zinc-500 border-zinc-200",       dot: "bg-zinc-400" },
+  inactive:  { bg: "bg-zinc-100 text-zinc-500 border-zinc-200",       dot: "bg-zinc-400" },
 };
 
-const STATUS_DOT: Record<string, string> = {
-  at_risk: "bg-orange-500",
-  active: "bg-green-500",
-  planned: "bg-blue-500",
-  completed: "bg-zinc-400",
-  archived: "bg-zinc-400",
+const ACCENT_BAR: Record<string, string> = {
+  at_risk:   "bg-orange-500",
+  active:    "bg-green-500",
+  planned:   "bg-blue-400",
+  completed: "bg-transparent",
+  inactive:  "bg-transparent",
 };
 
-function formatK(value: number): string {
-  return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(Math.round(value));
+function capitalize(s: string) {
+  return (s.charAt(0).toUpperCase() + s.slice(1)).replace(/_/g, " ");
+}
+
+function formatK(n: number): string {
+  if (n >= 1000) {
+    const v = (n / 1000).toFixed(1);
+    return v.endsWith(".0") ? v.slice(0, -2) + "k" : v + "k";
+  }
+  return String(Math.round(n));
 }
 
 function formatDate(iso: string | null): string {
@@ -63,81 +70,41 @@ function PlatformBadge({ platform }: { platform: string }) {
   const key = platform.toUpperCase();
   const style = PLATFORM_STYLES[key] ?? "bg-zinc-100 text-zinc-600 border-zinc-200";
   return (
-    <span className={cn("text-xs font-medium px-2 py-0.5 rounded border inline-block", style)}>
+    <span className={cn("text-xs font-medium px-2 py-0.5 rounded-md border", style)}>
       {key}
     </span>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const style = STATUS_STYLES[status] ?? STATUS_STYLES.archived;
-  const dot = STATUS_DOT[status] ?? "bg-zinc-400";
+  const { bg, dot } = STATUS_BADGE[status] ?? STATUS_BADGE.inactive;
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full border",
-        style
-      )}
-    >
+    <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border", bg)}>
       <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", dot)} />
-      {status.replace("_", " ")}
+      {capitalize(status)}
     </span>
   );
 }
 
-function ClicksCell({
-  clicks,
-  clicksChange,
-}: {
-  clicks: number;
-  clicksChange: number | null;
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <span>{clicks.toLocaleString()}</span>
-      {clicksChange !== null && (
-        <span
-          className={cn(
-            "text-xs flex items-center",
-            clicksChange >= 0 ? "text-green-600" : "text-red-600"
-          )}
-        >
-          {clicksChange >= 0 ? (
-            <TrendingUp className="h-3 w-3 mr-0.5" />
-          ) : (
-            <TrendingDown className="h-3 w-3 mr-0.5" />
-          )}
-          {Math.abs(Math.round(clicksChange * 100))}%
-        </span>
-      )}
-    </div>
-  );
-}
-
-function InsightCell({
+function InsightArea({
   campaign,
-  isGenerating,
+  isLoading,
 }: {
   campaign: CampaignListItem;
-  isGenerating: boolean;
+  isLoading: boolean;
 }) {
-  if (!campaign.latestMetric) return null;
+  if (campaign._count.metrics === 0) return null;
 
-  if (isGenerating && !campaign.latestInsight) {
-    return (
-      <div className="flex items-center gap-1.5 mt-1">
-        <Sparkles className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />
-        <div className="w-48 h-3 bg-muted animate-pulse rounded" />
-      </div>
-    );
+  if (isLoading) {
+    return <div className="w-52 h-3 rounded bg-muted animate-pulse mt-1.5" />;
   }
 
   if (!campaign.latestInsight) return null;
 
   return (
-    <div className="flex items-start gap-1.5 mt-1">
-      <Sparkles className="h-3 w-3 text-muted-foreground/60 flex-shrink-0 mt-0.5" />
-      <span className="text-xs text-muted-foreground leading-tight line-clamp-2">
+    <div className="flex items-start gap-1 mt-1.5">
+      <Sparkles className="w-3 h-3 text-muted-foreground flex-shrink-0 mt-0.5" />
+      <span className="text-xs text-muted-foreground leading-snug">
         {campaign.latestInsight.content}
       </span>
     </div>
@@ -146,22 +113,26 @@ function InsightCell({
 
 function TableSkeleton() {
   return (
-    <div className="w-full">
+    <div className="bg-background rounded-xl border border-border shadow-sm overflow-hidden mt-4">
+      <div className="bg-muted/50 border-b border-border px-6 py-3 flex items-center gap-4">
+        <div className="flex-[2.5] h-3 w-24 bg-muted/80 animate-pulse rounded" />
+        <div className="flex-[3] h-3 w-20 bg-muted/80 animate-pulse rounded" />
+        <div className="min-w-[280px] h-3 w-28 bg-muted/80 animate-pulse rounded" />
+      </div>
       {Array.from({ length: 5 }).map((_, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-4 px-4 py-4 border-b border-border/50"
-        >
-          <div className="flex-1 space-y-2">
-            <div className="h-4 w-48 bg-muted animate-pulse rounded" />
+        <div key={i} className="flex items-center border-b border-border last:border-0 px-6 py-4 gap-4">
+          <div className="flex-[2.5] space-y-2">
+            <div className="h-4 w-44 bg-muted animate-pulse rounded" />
             <div className="h-3 w-32 bg-muted animate-pulse rounded" />
           </div>
-          <div className="h-4 w-16 bg-muted animate-pulse rounded" />
-          <div className="h-4 w-16 bg-muted animate-pulse rounded" />
-          <div className="h-4 w-16 bg-muted animate-pulse rounded" />
-          <div className="space-y-2">
-            <div className="h-5 w-20 bg-muted animate-pulse rounded-full" />
-            <div className="h-3 w-40 bg-muted animate-pulse rounded" />
+          <div className="flex-[3] flex gap-6">
+            <div className="flex-1 h-4 bg-muted animate-pulse rounded" />
+            <div className="flex-1 h-4 bg-muted animate-pulse rounded" />
+            <div className="flex-1 h-4 bg-muted animate-pulse rounded" />
+          </div>
+          <div className="min-w-[280px] space-y-2">
+            <div className="h-5 w-20 bg-muted animate-pulse rounded-md" />
+            <div className="h-3 w-48 bg-muted animate-pulse rounded" />
           </div>
         </div>
       ))}
@@ -171,23 +142,20 @@ function TableSkeleton() {
 
 export function CampaignTable() {
   const router = useRouter();
-  const { campaigns, isLoading, error, generatingIds } = useCampaignList();
+  const { campaigns, isLoading, loadingInsights, error, counts, clientList } = useCampaignList();
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
-  const [search, setSearch] = useState("");
-
-  const countBy = (status: CampaignStatus) =>
-    campaigns.filter((c) => c.status === status).length;
-
-  const atRiskCount = countBy("at_risk");
-  const activeCount = countBy("active");
-  const plannedCount = countBy("planned");
-  const completedCount = countBy("completed");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState<string>("all");
 
   const filtered = campaigns
-    .filter((c) => activeTab === "all" || c.status === activeTab)
     .filter((c) => {
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
+      const status = TAB_TO_STATUS[activeTab];
+      return status === null || c.status === status;
+    })
+    .filter((c) => selectedClientId === "all" || c.client.id === selectedClientId)
+    .filter((c) => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
       return (
         c.name.toLowerCase().includes(q) ||
         c.client.name.toLowerCase().includes(q) ||
@@ -195,255 +163,221 @@ export function CampaignTable() {
       );
     });
 
-  const tabs: { key: FilterTab; label: string; count: number; dot?: string }[] = [
-    { key: "all", label: "All", count: campaigns.length },
-    { key: "at_risk", label: "Needs attention", count: atRiskCount, dot: "bg-orange-500" },
-    { key: "active", label: "Active", count: activeCount },
-    { key: "planned", label: "Planned", count: plannedCount },
-    { key: "completed", label: "Completed", count: completedCount },
+  const tabs: { key: FilterTab; label: string; count: number; dot?: boolean }[] = [
+    { key: "all",              label: "All",             count: counts.all },
+    { key: "needs_attention",  label: "Needs attention", count: counts.needs_attention, dot: true },
+    { key: "active",           label: "Active",          count: counts.active },
+    { key: "planned",          label: "Planned",         count: counts.planned },
+    { key: "completed",        label: "Completed",       count: counts.completed },
   ];
 
   return (
-    <div className="max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-4">
+    <div>
+      {/* Page header */}
+      <div className="flex items-start justify-between mb-5">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Campaigns</h1>
-          <p className="text-sm mt-0.5">
-            {atRiskCount > 0 && (
-              <>
-                <span className="text-orange-600 font-medium">
-                  {atRiskCount} {atRiskCount === 1 ? "campaign needs" : "campaigns need"} attention
-                </span>
-                <span className="text-muted-foreground"> · </span>
-              </>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {counts.needs_attention > 0 && (
+              <span className="text-orange-600 font-medium">
+                {counts.needs_attention}{" "}
+                {counts.needs_attention === 1 ? "campaign needs" : "campaigns need"} attention
+                {" · "}
+              </span>
             )}
-            <span className="text-muted-foreground">
-              {activeCount} active · {plannedCount} planned
-            </span>
+            {counts.active} active · {counts.planned} planned
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="text-muted-foreground">
-            Filters
-          </Button>
-          <Button size="sm" onClick={() => router.push("/campaigns/new")}>
-            <Plus className="h-3.5 w-3.5 mr-1" />
-            New Campaign
-          </Button>
-        </div>
+        <Button onClick={() => router.push("/campaigns/new")}>
+          <Plus className="h-4 w-4 mr-1.5" />
+          New Campaign
+        </Button>
       </div>
 
-      {/* Filter tabs + search row */}
-      <div className="flex items-center justify-between gap-3 border-b border-border/60">
-        <div className="flex items-center gap-0.5">
+      {/* Filter + search row */}
+      <div className="flex items-center justify-between gap-4">
+        {/* Pills */}
+        <div className="inline-flex gap-1">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px",
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-colors",
                 activeTab === tab.key
-                  ? "border-foreground text-foreground font-medium"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               {tab.dot && (
-                <span className={cn("w-1.5 h-1.5 rounded-full", tab.dot)} />
+                <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" />
               )}
-              {tab.label}
-              <span
-                className={cn(
-                  "text-xs px-1.5 py-0.5 rounded-full",
-                  activeTab === tab.key
-                    ? "bg-foreground text-background"
-                    : "bg-muted text-muted-foreground"
-                )}
-              >
-                {tab.count}
-              </span>
+              {tab.label} {tab.count}
             </button>
           ))}
         </div>
 
-        <div className="flex items-center gap-2 pb-1">
+        {/* Search + client filter */}
+        <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
               placeholder="Search campaigns..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-8 w-48 text-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-9 w-64 rounded-lg border border-border bg-muted/50 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring/20 transition-colors"
             />
           </div>
-          <Button variant="outline" size="sm" className="h-8 text-xs text-muted-foreground">
-            All clients
-          </Button>
-          <div className="flex items-center border border-border rounded-md overflow-hidden">
-            <button className="p-1.5 bg-muted/60 hover:bg-muted transition-colors">
-              <List className="h-3.5 w-3.5 text-foreground" />
-            </button>
-            <button className="p-1.5 hover:bg-muted/40 transition-colors">
-              <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
-            </button>
-          </div>
+          <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+            <SelectTrigger className="w-40 h-9">
+              <SelectValue placeholder="All clients" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All clients</SelectItem>
+              {clientList.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       {/* Error */}
-      {error && <p className="text-sm text-destructive py-4">{error}</p>}
+      {error && <p className="text-sm text-destructive mt-4">{error}</p>}
 
       {/* Table */}
       {isLoading ? (
         <TableSkeleton />
       ) : filtered.length === 0 ? (
-        <div className="flex items-center justify-center py-20 text-sm text-muted-foreground">
-          No campaigns match your search.
+        <div className="bg-background rounded-xl border border-border shadow-sm mt-4 flex items-center justify-center py-20 text-sm text-muted-foreground">
+          No campaigns match your filters.
         </div>
       ) : (
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left text-xs uppercase tracking-wide text-muted-foreground font-medium px-4 py-2.5 w-[34%]">
-                Campaign
-              </th>
-              <th
-                className="text-left text-xs uppercase tracking-wide text-muted-foreground font-medium px-4 py-2.5"
-                colSpan={3}
+        <div className="bg-background rounded-xl border border-border shadow-sm overflow-hidden mt-4">
+          {/* Header row */}
+          <div className="bg-muted/50 border-b border-border px-6 py-3 flex items-center">
+            <div className="flex-[2.5] text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Campaign
+            </div>
+            <div className="flex-[3] pl-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Performance
+            </div>
+            <div className="min-w-[280px] pl-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Health &amp; Insight
+            </div>
+          </div>
+
+          {/* Data rows */}
+          {filtered.map((campaign) => {
+            const isAtRisk = campaign.status === "at_risk";
+            const isGenerating = loadingInsights.has(campaign.id);
+            const m = campaign.latestMetric;
+            const accent = ACCENT_BAR[campaign.status] ?? "bg-transparent";
+
+            return (
+              <div
+                key={campaign.id}
+                onClick={() => router.push(`/campaigns/${campaign.id}`)}
+                className="relative group flex items-stretch border-b border-border last:border-0 hover:bg-muted/40 cursor-pointer transition-colors"
               >
-                Performance
-              </th>
-              <th className="text-left text-xs uppercase tracking-wide text-muted-foreground font-medium px-4 py-2.5 w-[28%]">
-                Health &amp; Insight
-              </th>
-              <th className="w-8" />
-            </tr>
-            <tr className="border-b border-border/40 bg-muted/20">
-              <th />
-              <th className="text-left text-xs uppercase tracking-wide text-muted-foreground/60 font-medium px-4 py-1.5 w-28">
-                Spend
-              </th>
-              <th className="text-left text-xs uppercase tracking-wide text-muted-foreground/60 font-medium px-4 py-1.5 w-28">
-                Clicks
-              </th>
-              <th className="text-left text-xs uppercase tracking-wide text-muted-foreground/60 font-medium px-4 py-1.5 w-24">
-                Conv.
-              </th>
-              <th />
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((campaign) => {
-              const isAtRisk = campaign.status === "at_risk";
-              const isGenerating = generatingIds.has(campaign.id);
-              const m = campaign.latestMetric;
+                {/* Left accent bar */}
+                <div className={cn("absolute left-0 top-0 bottom-0 w-[3px]", accent)} />
 
-              return (
-                <tr
-                  key={campaign.id}
-                  onClick={() => router.push(`/campaigns/${campaign.id}`)}
-                  className="border-b border-border/40 hover:bg-muted/40 cursor-pointer transition-colors group relative"
-                >
-                  {/* Campaign */}
-                  <td className="relative px-4 py-3">
-                    {isAtRisk && (
-                      <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-orange-500 rounded-r" />
-                    )}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-sm">{campaign.name}</span>
-                      <PlatformBadge platform={campaign.platform} />
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {campaign.client.name}
-                      {(campaign.startDate || campaign.endDate) && (
-                        <>
-                          {" · "}
-                          {formatDate(campaign.startDate)} → {formatDate(campaign.endDate)}
-                        </>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* Spend */}
-                  <td className="px-4 py-3 text-sm">
-                    {m ? (
+                {/* Campaign cell */}
+                <div className="flex-[2.5] pl-6 pr-4 py-4">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium">{campaign.name}</span>
+                    <PlatformBadge platform={campaign.platform} />
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {campaign.client.name}
+                    {(campaign.startDate || campaign.endDate) && (
                       <>
-                        <span className="text-foreground">${formatK(m.spend)}</span>
-                        {campaign.budget ? (
-                          <span className="text-muted-foreground"> / ${formatK(campaign.budget)}</span>
-                        ) : null}
+                        {" · "}
+                        {formatDate(campaign.startDate)} → {formatDate(campaign.endDate)}
                       </>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
                     )}
-                  </td>
+                  </div>
+                </div>
 
-                  {/* Clicks */}
-                  <td className="px-4 py-3 text-sm">
+                {/* Performance cell */}
+                <div className="flex-[3] px-4 py-4 flex flex-row gap-6">
+                  {/* SPEND */}
+                  <div className="flex-1">
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">
+                      Spend
+                    </div>
                     {m ? (
-                      <ClicksCell clicks={m.clicks} clicksChange={m.clicksChange} />
+                      <div className="text-sm font-medium">
+                        ${formatK(m.spend)}
+                        {m.budget > 0 && (
+                          <span className="text-muted-foreground font-normal">
+                            {" / "}${formatK(m.budget)}
+                          </span>
+                        )}
+                      </div>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <div className="text-sm text-muted-foreground">—</div>
                     )}
-                  </td>
+                  </div>
 
-                  {/* Conversions */}
-                  <td className="px-4 py-3 text-sm">
-                    {m?.conversions != null ? (
-                      <span>{m.conversions.toLocaleString()}</span>
+                  {/* CLICKS */}
+                  <div className="flex-1">
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">
+                      Clicks
+                    </div>
+                    {m ? (
+                      <div className="text-sm font-medium">{formatK(m.clicks)}</div>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <div className="text-sm text-muted-foreground">—</div>
                     )}
-                  </td>
+                  </div>
 
-                  {/* Health & Insight */}
-                  <td className={cn("px-4 py-3", isAtRisk && "bg-orange-50/30")}>
-                    <StatusBadge status={campaign.status} />
-                    <InsightCell campaign={campaign} isGenerating={isGenerating} />
-                  </td>
+                  {/* CONV. */}
+                  <div className="flex-1">
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">
+                      Conv.
+                    </div>
+                    {m ? (
+                      <div className="text-sm font-medium">{formatK(m.conversions)}</div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">—</div>
+                    )}
+                  </div>
+                </div>
 
-                  {/* More menu */}
-                  <td
-                    className="px-2 py-3"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => router.push(`/campaigns/${campaign.id}`)}
-                        >
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => router.push(`/campaigns/${campaign.id}?edit=true`)}
-                        >
-                          Edit
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                {/* Health & Insight cell */}
+                <div
+                  className={cn(
+                    "min-w-[280px] px-4 py-4",
+                    isAtRisk && "bg-orange-50/40"
+                  )}
+                >
+                  <StatusBadge status={campaign.status} />
+                  <InsightArea campaign={campaign} isLoading={isGenerating} />
+                </div>
+
+                {/* Overflow menu — absolute, appears on hover */}
+                <button
+                  className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* Footer */}
       {!isLoading && filtered.length > 0 && (
-        <div className="text-xs text-muted-foreground pt-3 pb-1 px-4">
+        <p className="text-xs text-muted-foreground mt-3 px-1">
           Sorted by priority · Updated just now
-        </div>
+        </p>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  getCampaignList,
   listCampaignItems,
   generateQuickInsight,
   getCampaign,
@@ -8,6 +9,15 @@ import {
   removeCampaign,
 } from "@/server/campaigns/campaigns.service";
 import { CreateCampaignInput, UpdateCampaignInput } from "@/features/campaigns/types";
+
+export async function handleGetCampaignList(workspaceId: string) {
+  try {
+    const campaigns = await getCampaignList(workspaceId);
+    return NextResponse.json(campaigns, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: "Failed to fetch campaigns" }, { status: 500 });
+  }
+}
 
 export async function handleListCampaigns(workspaceId: string) {
   try {

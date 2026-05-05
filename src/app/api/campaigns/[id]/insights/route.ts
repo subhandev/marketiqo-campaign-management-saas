@@ -2,130 +2,66 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/server/db/client";
 import { openai } from "@/lib/openai";
+import { resolveWorkspaceId } from "@/server/workspace/resolve-workspace";
+import { saveCampaignInsight } from "@/server/campaigns/campaigns.service";
 
 export async function POST(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const workspaceId = await resolveWorkspaceId(userId);
+  if (!workspaceId) return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
 
   const { id } = await params;
 
-  // Get campaign with client info
   const campaign = await prisma.campaign.findFirst({
-    where: {
-      id,
-      client: {
-        workspace: {
-          user: { clerkUserId: userId },
-        },
-      },
-    },
-    include: {
-      client: {
-        select: { name: true, industry: true },
-      },
+    where: { id, client: { workspaceId } },
+    select: {
+      id: true,
+      name: true,
+      platform: true,
+      status: true,
+      budget: true,
       metrics: {
         orderBy: { date: "desc" },
-        take: 5,
+        take: 1,
+        select: { spend: true, clicks: true, conversions: true },
       },
     },
   });
 
-  if (!campaign) {
-    return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
-  }
+  if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+  if (!campaign.metrics.length) return NextResponse.json({ error: "No metrics available" }, { status: 400 });
 
-  // Build context for OpenAI
-  const metricsContext =
-    campaign.metrics.length > 0
-      ? `Recent metrics: ${campaign.metrics
-          .map(
-            (m) =>
-              `Impressions: ${m.impressions}, Clicks: ${m.clicks}, Spend: $${m.spend}, Conversions: ${m.conversions ?? 0}`
-          )
-          .join(" | ")}`
-      : "No metrics data available yet.";
-
-  const prompt = `
-You are an expert marketing campaign analyst. Analyze the following campaign and provide actionable insights.
-
-Campaign: ${campaign.name}
-Client: ${campaign.client?.name ?? "Unknown"}
-Industry: ${campaign.client?.industry ?? "Unknown"}
-Platform: ${campaign.platform}
-Status: ${campaign.status}
-Goal: ${campaign.goal ?? "Not specified"}
-Start Date: ${campaign.startDate ?? "Not set"}
-End Date: ${campaign.endDate ?? "Not set"}
-Deadline: ${campaign.deadline ?? "Not set"}
-Description: ${campaign.description ?? "Not provided"}
-${metricsContext}
-
-Provide exactly 3 insights in the following JSON format only, no extra text:
-{
-  "insights": [
-    {
-      "type": "performance" | "recommendation" | "risk",
-      "title": "short title max 6 words",
-      "content": "2-3 sentence actionable insight",
-      "score": 0.0 to 1.0
-    }
-  ]
-}
-`;
+  const m = campaign.metrics[0];
+  const prompt = `You are a marketing analyst AI. Write a single sharp insight sentence (max 15 words) about this campaign's health or performance trend. Be specific and actionable. Campaign: ${campaign.name}, Platform: ${campaign.platform}, Status: ${campaign.status}, Spend: $${m.spend} of $${campaign.budget ?? "unknown"} budget, Clicks: ${m.clicks}, Conversions: ${m.conversions ?? 0}. Respond with only the insight sentence, no preamble, no quotes.`;
 
   try {
     const completion = await openai.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
+      max_tokens: 60,
       temperature: 0.7,
     });
 
-    const raw = completion.choices[0].message.content ?? "{}";
-    const parsed = JSON.parse(raw);
-    const insights = parsed.insights ?? [];
+    const content = completion.choices[0]?.message?.content?.trim() ?? "";
+    await saveCampaignInsight(campaign.id, content);
 
-    // Delete old insights and save new ones
-    await prisma.insight.deleteMany({ where: { campaignId: id } });
-
-    const saved = await prisma.insight.createMany({
-      data: insights.map((insight: any) => ({
-        campaignId: id,
-        type: insight.type,
-        content: `${insight.title}: ${insight.content}`,
-        score: insight.score,
-      })),
-    });
-
-    // Return fresh insights
-    const freshInsights = await prisma.insight.findMany({
-      where: { campaignId: id },
-      orderBy: { createdAt: "desc" },
-    });
-
-    return NextResponse.json({ insights: freshInsights }, { status: 200 });
-  } catch (error) {
-    console.error("OpenAI error:", error);
-    return NextResponse.json(
-      { error: "Failed to generate insights" },
-      { status: 500 }
-    );
+    return NextResponse.json({ insight: content }, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: "Failed to generate insight" }, { status: 500 });
   }
 }
 
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
 

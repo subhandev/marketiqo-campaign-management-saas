@@ -2,6 +2,7 @@ import {
   getCampaignsByWorkspace,
   getCampaignListItems,
   getCampaignWithLatestMetric,
+  findManyByWorkspace,
   getCampaignById,
   createCampaign,
   updateCampaign,
@@ -16,8 +17,48 @@ const STATUS_ORDER: Record<string, number> = {
   active: 1,
   planned: 2,
   completed: 3,
-  archived: 4,
+  inactive: 4,
+  archived: 5,
 };
+
+export async function getCampaignList(workspaceId: string) {
+  const raw = await findManyByWorkspace(workspaceId);
+
+  const campaigns = raw.map((c) => ({
+    id: c.id,
+    name: c.name,
+    platform: c.platform,
+    status: c.status,
+    startDate: c.startDate?.toISOString() ?? null,
+    endDate: c.endDate?.toISOString() ?? null,
+    client: c.client,
+    _count: c._count,
+    latestMetric: c.metrics[0]
+      ? {
+          spend: c.metrics[0].spend,
+          budget: c.budget ?? 0,
+          clicks: c.metrics[0].clicks,
+          conversions: c.metrics[0].conversions ?? 0,
+          recordedAt: c.metrics[0].date.toISOString(),
+        }
+      : null,
+    latestInsight: c.insights[0]
+      ? {
+          id: c.insights[0].id,
+          content: c.insights[0].content,
+          createdAt: c.insights[0].createdAt.toISOString(),
+        }
+      : null,
+  }));
+
+  return campaigns.sort(
+    (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99)
+  );
+}
+
+export async function saveCampaignInsight(campaignId: string, content: string) {
+  return createInsight(campaignId, { type: "summary", content });
+}
 
 export async function listCampaigns(workspaceId: string) {
   const campaigns = await getCampaignsByWorkspace(workspaceId);

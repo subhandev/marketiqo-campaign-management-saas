@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { handleListCampaigns, handleCreateCampaign } from "@/server/campaigns/campaigns.handler";
+import { handleGetCampaignList, handleCreateCampaign } from "@/server/campaigns/campaigns.handler";
 import {
   resolveWorkspaceId,
   getRealWorkspaceId,
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   if (!userId) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   const workspaceId = await resolveWorkspaceId(userId);
   if (!workspaceId) return new Response(JSON.stringify({ error: "Workspace not found" }), { status: 404 });
-  return handleListCampaigns(workspaceId);
+  return handleGetCampaignList(workspaceId);
 }
 
 export async function POST(req: NextRequest) {

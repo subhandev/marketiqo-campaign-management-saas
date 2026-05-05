@@ -5,7 +5,6 @@ import {
   createCampaign,
   updateCampaign,
   deleteCampaign,
-  generateInsight,
 } from "@/features/campaigns/api/campaigns.api";
 import {
   CampaignListItem,
@@ -13,70 +12,6 @@ import {
   CreateCampaignInput,
   UpdateCampaignInput,
 } from "@/features/campaigns/types";
-
-export function useCampaignList() {
-  const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    async function load() {
-      try {
-        setIsLoading(true);
-        const data = await getCampaigns();
-        setCampaigns(data.campaigns);
-
-        const needsInsight = data.campaigns.filter((c) => {
-          if (!c.latestMetric) return false;
-          if (!c.latestInsight) return true;
-          return new Date(c.latestMetric.date) > new Date(c.latestInsight.createdAt);
-        });
-
-        if (needsInsight.length > 0) {
-          setGeneratingIds(new Set(needsInsight.map((c) => c.id)));
-
-          Promise.all(
-            needsInsight.map(async (c) => {
-              try {
-                const result = await generateInsight(c.id);
-                setCampaigns((prev) =>
-                  prev.map((campaign) =>
-                    campaign.id === c.id
-                      ? {
-                          ...campaign,
-                          latestInsight: {
-                            content: result.insight,
-                            createdAt: new Date().toISOString(),
-                          },
-                        }
-                      : campaign
-                  )
-                );
-              } catch {
-                // silently ignore per-campaign insight failures
-              } finally {
-                setGeneratingIds((prev) => {
-                  const next = new Set(prev);
-                  next.delete(c.id);
-                  return next;
-                });
-              }
-            })
-          );
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load campaigns");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    load();
-  }, []);
-
-  return { campaigns, isLoading, error, generatingIds };
-}
 
 export function useCampaigns() {
   const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
@@ -89,8 +24,8 @@ export function useCampaigns() {
       setLoading(true);
       setError(null);
       const data = await getCampaigns();
-      setCampaigns(data.campaigns);
-      setTotal(data.total);
+      setCampaigns(data);
+      setTotal(data.length);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

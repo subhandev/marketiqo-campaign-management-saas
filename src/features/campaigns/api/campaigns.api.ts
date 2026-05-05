@@ -1,5 +1,5 @@
 import {
-  CampaignsResponse,
+  CampaignListItem,
   CampaignResponse,
   CreateCampaignInput,
   UpdateCampaignInput,
@@ -9,13 +9,13 @@ import {
 
 const BASE_URL = "/api/campaigns";
 
-export async function getCampaigns(): Promise<CampaignsResponse> {
+export async function getCampaigns(): Promise<CampaignListItem[]> {
   const res = await fetch(BASE_URL);
   if (!res.ok) throw new Error("Failed to fetch campaigns");
   return res.json();
 }
 
-export async function fetchCampaigns(): Promise<CampaignsResponse> {
+export async function fetchCampaigns(): Promise<CampaignListItem[]> {
   return getCampaigns();
 }
 
@@ -26,7 +26,7 @@ export async function fetchCampaign(id: string): Promise<CampaignResponse> {
 }
 
 export async function generateInsight(id: string): Promise<{ insight: string }> {
-  const res = await fetch(`${BASE_URL}/${id}/insights/generate`, { method: "POST" });
+  const res = await fetch(`${BASE_URL}/${id}/insights`, { method: "POST" });
   if (!res.ok) throw new Error("Failed to generate insight");
   return res.json();
 }
