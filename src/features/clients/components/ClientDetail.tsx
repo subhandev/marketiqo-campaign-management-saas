@@ -8,6 +8,9 @@ import {
   Plus,
   MoreHorizontal,
   Sparkles,
+  AlertTriangle,
+  TrendingDown,
+  Lightbulb,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -16,6 +19,13 @@ import { Client, Campaign } from "@/features/clients/types";
 import { Insight } from "@/features/campaigns/types";
 import { useClientMutations } from "@/features/clients/hooks/useClients";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface ClientDetailProps {
   client: Client;
@@ -44,7 +54,26 @@ const campaignStatusLabel: Record<string, string> = {
   completed: "Completed",
   archived: "Archived",
 };
-
+const INSIGHT_UI = {
+  risk: {
+    badge: "bg-orange-50 text-orange-600 border border-orange-200",
+    iconWrap: "bg-orange-50 text-orange-500",
+    label: "RISK",
+    Icon: AlertTriangle,
+  },
+  performance: {
+    badge: "bg-purple-50 text-purple-600 border border-purple-200",
+    iconWrap: "bg-purple-50 text-purple-500",
+    label: "TREND",
+    Icon: TrendingDown,
+  },
+  recommendation: {
+    badge: "bg-blue-50 text-blue-600 border border-blue-200",
+    iconWrap: "bg-blue-50 text-blue-500",
+    label: "RECOMMENDATION",
+    Icon: Lightbulb,
+  },
+} as const;
 function relativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const s = Math.floor(diff / 1000);
@@ -134,9 +163,9 @@ export function ClientDetail({
   const lastActivityDate =
     campaigns.length > 0
       ? [...campaigns].sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        )[0].createdAt
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )[0].createdAt
       : client.createdAt;
 
   const stats = [
@@ -198,7 +227,7 @@ export function ClientDetail({
                 className={cn(
                   "text-xs px-2.5 py-1 rounded-full font-medium border",
                   statusStyles[client.status as keyof typeof statusStyles] ??
-                    statusStyles.inactive,
+                  statusStyles.inactive,
                 )}
               >
                 {client.status}
@@ -226,27 +255,40 @@ export function ClientDetail({
         <div className="flex items-center gap-2 shrink-0">
           <Button
             size="sm"
-            variant="outline"
-            onClick={() => setIsEditing((e) => !e)}
-          >
-            <Pencil className="h-3.5 w-3.5 mr-1.5" />
-            {isEditing ? "Cancel" : "Edit"}
-          </Button>
-          <Button
-            size="sm"
             onClick={() => router.push(`/campaigns/new?clientId=${client.id}`)}
           >
             <Plus className="h-4 w-4 mr-1" />
             New Campaign
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setShowDeleteConfirm(true)}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Open menu"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem
+                onClick={() => (isEditing ? setIsEditing(false) : setIsEditing(true))}
+                className="flex items-center px-3 py-2 text-sm hover:bg-muted transition-colors"
+              >
+                <Pencil className="h-3.5 w-3.5 mr-2" />
+                {isEditing ? "View details" : "Edit"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              >
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
         </div>
       </div>
 
@@ -349,18 +391,63 @@ export function ClientDetail({
                     <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
                       <Sparkles className="h-4 w-4 text-primary" />
                       <h2 className="text-sm font-semibold">AI Insights</h2>
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {insights.length} total
+                      </span>
                     </div>
-                    <div className="divide-y divide-border">
-                      {insights.slice(0, 3).map((insight) => (
-                        <div key={insight.id} className="px-4 py-3 space-y-1">
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                            {insight.type}
-                          </p>
-                          <p className="text-sm leading-relaxed">
-                            {insight.content}
-                          </p>
-                        </div>
-                      ))}
+
+                    <div className="p-4 space-y-3">
+                      {insights
+                        .slice()
+                        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+                        .slice(0, 3)
+                        .map((insight) => {
+                          const ui =
+                            INSIGHT_UI[insight.type as keyof typeof INSIGHT_UI] ??
+                            INSIGHT_UI.recommendation;
+                          const Icon = ui.Icon;
+
+                          const colonIdx = insight.content.indexOf(":");
+                          const title =
+                            colonIdx > -1 ? insight.content.slice(0, colonIdx) : insight.content;
+                          const body =
+                            colonIdx > -1 ? insight.content.slice(colonIdx + 1).trim() : "";
+
+                          return (
+                            <div
+                              key={insight.id}
+                              className="rounded-xl border border-border bg-card p-5 space-y-3"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={cn("text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md", ui.badge)}>
+                                  {ui.label}
+                                </span>
+                                {insight.score != null && (
+                                  <span className="text-xs text-muted-foreground">
+                                    Confidence {Math.round((insight.score ?? 0) * 100)}%
+                                  </span>
+                                )}
+                                <span className="ml-auto text-xs text-muted-foreground/70">
+                                  {relativeTime(insight.createdAt)}
+                                </span>
+                              </div>
+
+                              <div className="flex items-start gap-3">
+                                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5", ui.iconWrap)}>
+                                  <Icon className="h-4 w-4" />
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-sm font-semibold leading-snug">{title}</p>
+                                  {body && (
+                                    <p className="text-sm text-muted-foreground leading-relaxed">
+                                      {body}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                     </div>
                   </div>
                 )}
