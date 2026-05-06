@@ -1,9 +1,25 @@
 "use client";
 
+import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { useSignIn } from "@clerk/nextjs/legacy";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect, type FormEvent } from "react";
 import { Eye, EyeOff, Lock, Mail, Loader2 } from "lucide-react";
+
+type ClerkErrorShape = {
+  errors?: Array<{
+    longMessage?: string;
+    message?: string;
+  }>;
+};
+
+function getClerkErrorMessage(err: unknown, fallback: string) {
+  if (typeof err !== "object" || err === null) return fallback;
+  const maybe = err as ClerkErrorShape;
+  const first = maybe.errors?.[0];
+  return first?.longMessage || first?.message || fallback;
+}
 
 const GoogleIcon = () => (
   <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" aria-hidden="true">
@@ -27,6 +43,7 @@ const GoogleIcon = () => (
 );
 
 export default function SignInPage() {
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const { isLoaded, signIn, setActive } = useSignIn();
   const router = useRouter();
   const emailRef = useRef<HTMLInputElement>(null);
@@ -46,6 +63,11 @@ export default function SignInPage() {
     emailRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    if (!authLoaded) return;
+    if (isSignedIn) router.replace("/dashboard");
+  }, [authLoaded, isSignedIn, router]);
+
   const validate = () => {
     const next: typeof errors = {};
     if (!email) next.email = "Email is required";
@@ -58,7 +80,11 @@ export default function SignInPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!isLoaded || !validate()) return;
+    if (!validate()) return;
+    if (!isLoaded) {
+      setErrors({ general: "Auth is still loading. Please wait 1–2 seconds and try again." });
+      return;
+    }
 
     try {
       setLoading(true);
@@ -73,11 +99,8 @@ export default function SignInPage() {
         await setActive({ session: result.createdSessionId });
         router.push("/dashboard");
       }
-    } catch (err: any) {
-      const message =
-        err?.errors?.[0]?.longMessage ??
-        err?.errors?.[0]?.message ??
-        "Invalid email or password";
+    } catch (err: unknown) {
+      const message = getClerkErrorMessage(err, "Invalid email or password");
       setErrors({ general: message });
     } finally {
       setLoading(false);
@@ -85,7 +108,10 @@ export default function SignInPage() {
   };
 
   const handleGoogleSignIn = async () => {
-    if (!isLoaded) return;
+    if (!isLoaded) {
+      setErrors({ general: "Auth is still loading. Please wait 1–2 seconds and try again." });
+      return;
+    }
     try {
       setGoogleLoading(true);
       await signIn.authenticateWithRedirect({
@@ -93,9 +119,12 @@ export default function SignInPage() {
         redirectUrl: "/sso-callback",
         redirectUrlComplete: "/dashboard",
       });
-    } catch (err) {
+    } catch (err: unknown) {
+      setErrors({
+        general: getClerkErrorMessage(err, "Google sign in failed. Please try again."),
+      });
+    } finally {
       setGoogleLoading(false);
-      setErrors({ general: "Google sign in failed. Please try again." });
     }
   };
 
@@ -113,6 +142,13 @@ export default function SignInPage() {
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          {!isLoaded && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+              <p className="text-xs font-medium text-amber-700">
+                Loading auth…
+              </p>
+            </div>
+          )}
           {/* General error */}
           {errors.general && (
             <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2.5">
@@ -270,12 +306,12 @@ export default function SignInPage() {
         {/* Sign up */}
         <p className="mt-6 text-center text-sm text-zinc-500">
           Don&apos;t have an account?{" "}
-          <a
+          <Link
             href="/sign-up"
             className="font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
           >
             Sign up
-          </a>
+          </Link>
         </p>
       </div>
 

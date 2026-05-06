@@ -1,4 +1,4 @@
-import { Check, Quote, Sparkles } from "lucide-react";
+import { Check, Quote } from "lucide-react";
 import Image from "next/image";
 
 const benefits = [
@@ -39,10 +39,13 @@ function BrandPanel() {
           }}
         >
           {/* <Sparkles className="h-5 w-5 text-white" strokeWidth={2.5} /> */}
-          <img
+          <Image
             src="/branding/logo.svg"
             alt="Marketiqo logo"
+            width={48}
+            height={48}
             className="h-12 w-12 object-contain"
+            priority
           />
         </div>
         <span className="text-4xl font-semibold tracking-tight">
@@ -103,8 +106,8 @@ function BrandPanel() {
             <Quote className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
           </div>
           <blockquote className="text-[15px] leading-relaxed text-white/85">
-            "We replaced three reporting tools and finally see what's actually
-            moving the needle. Our team ships decisions in minutes."
+            &quot;We replaced three reporting tools and finally see what&apos;s
+            actually moving the needle. Our team ships decisions in minutes.&quot;
           </blockquote>
           <figcaption className="mt-4 flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-sm font-semibold ring-2 ring-white/10">
@@ -168,9 +171,9 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
+    <div className="relative min-h-screen grid lg:grid-cols-2">
       <BrandPanel />
-      <div className="flex items-center justify-center bg-[#f8f9fb] p-8">
+      <div className="relative z-10 flex items-center justify-center bg-[#f8f9fb] p-8 pointer-events-auto">
         {children}
       </div>
     </div>
