@@ -13,6 +13,10 @@ import {
 } from "@/components/ui/select";
 import { useCampaignList } from "@/features/campaigns/hooks/useCampaignList";
 import { CampaignListItem } from "@/features/campaigns/types";
+import { CAMPAIGN_STATUS_CONFIG } from "@/features/campaigns/utils/status";
+import { CampaignStatusBadge } from "@/shared/ui/CampaignStatusBadge";
+import { formatCompact } from "@/shared/format/numbers";
+import { formatDateShort } from "@/shared/format/dates";
 import { cn } from "@/lib/utils";
 
 type FilterTab = "all" | "needs_attention" | "active" | "planned" | "completed";
@@ -33,55 +37,12 @@ const PLATFORM_STYLES: Record<string, string> = {
   X: "bg-zinc-100 text-zinc-600 border-zinc-200",
 };
 
-const STATUS_BADGE: Record<string, { bg: string; dot: string }> = {
-  at_risk:   { bg: "bg-orange-50 text-orange-700 border-orange-200",  dot: "bg-orange-500" },
-  active:    { bg: "bg-green-50 text-green-700 border-green-200",     dot: "bg-green-500" },
-  planned:   { bg: "bg-blue-50 text-blue-700 border-blue-200",        dot: "bg-blue-400" },
-  completed: { bg: "bg-zinc-100 text-zinc-500 border-zinc-200",       dot: "bg-zinc-400" },
-  inactive:  { bg: "bg-zinc-100 text-zinc-500 border-zinc-200",       dot: "bg-zinc-400" },
-};
-
-const ACCENT_BAR: Record<string, string> = {
-  at_risk:   "bg-orange-500",
-  active:    "bg-green-500",
-  planned:   "bg-blue-400",
-  completed: "bg-transparent",
-  inactive:  "bg-transparent",
-};
-
-function capitalize(s: string) {
-  return (s.charAt(0).toUpperCase() + s.slice(1)).replace(/_/g, " ");
-}
-
-function formatK(n: number): string {
-  if (n >= 1000) {
-    const v = (n / 1000).toFixed(1);
-    return v.endsWith(".0") ? v.slice(0, -2) + "k" : v + "k";
-  }
-  return String(Math.round(n));
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
 function PlatformBadge({ platform }: { platform: string }) {
   const key = platform.toUpperCase();
   const style = PLATFORM_STYLES[key] ?? "bg-zinc-100 text-zinc-600 border-zinc-200";
   return (
     <span className={cn("text-xs font-medium px-2 py-0.5 rounded-md border", style)}>
       {key}
-    </span>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const { bg, dot } = STATUS_BADGE[status] ?? STATUS_BADGE.inactive;
-  return (
-    <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border", bg)}>
-      <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", dot)} />
-      {capitalize(status)}
     </span>
   );
 }
@@ -275,7 +236,8 @@ export function CampaignTable() {
             const isAtRisk = campaign.status === "at_risk";
             const isGenerating = loadingInsights.has(campaign.id);
             const m = campaign.latestMetric;
-            const accent = ACCENT_BAR[campaign.status] ?? "bg-transparent";
+            const statusKey = campaign.status as import("@/features/campaigns/types").CampaignStatus;
+            const accent = CAMPAIGN_STATUS_CONFIG[statusKey]?.accent ?? "bg-transparent";
 
             return (
               <div
@@ -297,7 +259,7 @@ export function CampaignTable() {
                     {(campaign.startDate || campaign.endDate) && (
                       <>
                         {" · "}
-                        {formatDate(campaign.startDate)} → {formatDate(campaign.endDate)}
+                        {formatDateShort(campaign.startDate)} → {formatDateShort(campaign.endDate)}
                       </>
                     )}
                   </div>
@@ -312,10 +274,10 @@ export function CampaignTable() {
                     </div>
                     {m ? (
                       <div className="text-sm font-medium">
-                        ${formatK(m.spend)}
+                        ${formatCompact(m.spend)}
                         {m.budget > 0 && (
                           <span className="text-muted-foreground font-normal">
-                            {" / "}${formatK(m.budget)}
+                            {" / "}${formatCompact(m.budget)}
                           </span>
                         )}
                       </div>
@@ -330,7 +292,7 @@ export function CampaignTable() {
                       Clicks
                     </div>
                     {m ? (
-                      <div className="text-sm font-medium">{formatK(m.clicks)}</div>
+                      <div className="text-sm font-medium">{formatCompact(m.clicks)}</div>
                     ) : (
                       <div className="text-sm text-muted-foreground">—</div>
                     )}
@@ -342,7 +304,7 @@ export function CampaignTable() {
                       Conv.
                     </div>
                     {m ? (
-                      <div className="text-sm font-medium">{formatK(m.conversions)}</div>
+                      <div className="text-sm font-medium">{formatCompact(m.conversions)}</div>
                     ) : (
                       <div className="text-sm text-muted-foreground">—</div>
                     )}
@@ -356,7 +318,7 @@ export function CampaignTable() {
                     isAtRisk && "bg-orange-50/40"
                   )}
                 >
-                  <StatusBadge status={campaign.status} />
+                  <CampaignStatusBadge status={campaign.status} />
                   <InsightArea campaign={campaign} isLoading={isGenerating} />
                 </div>
 

@@ -27,6 +27,9 @@ import {
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CampaignStatus } from "@/features/campaigns/types";
+import { formatCurrency } from "@/shared/format/numbers";
+import { formatDateShort } from "@/shared/format/dates";
+import { getInitials } from "@/shared/format/strings";
 
 // ── API response type ─────────────────────────────────────────────────────────
 
@@ -71,29 +74,6 @@ interface DashboardData {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatSpend(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
-  return `$${n.toLocaleString()}`;
-}
-
-function fmtDeadline(d: string | null): string {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function getNameInitials(name: string): string {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase() || "?"
-  );
-}
 
 function daysLabel(n: number | null): string {
   if (n === null) return "No deadline set";
@@ -445,7 +425,7 @@ export function DashboardContent() {
     },
     {
       label: "Total Spend",
-      value: formatSpend(stats.totalSpend),
+      value: formatCurrency(stats.totalSpend),
       trend: "Across all campaigns",
       up: true,
       icon: DollarSign,
@@ -493,9 +473,9 @@ export function DashboardContent() {
     name: c.name,
     client: c.client?.name ?? "—",
     platform: c.platform,
-    due: fmtDeadline(c.deadline),
+    due: formatDateShort(c.deadline),
     status: c.status,
-    ownerInitials: getNameInitials(c.client?.name ?? c.name),
+    ownerInitials: getInitials(c.client?.name ?? c.name),
     ownerBg: ownerBgFromName(c.client?.name ?? c.id),
   }));
 

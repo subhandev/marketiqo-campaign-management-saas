@@ -23,59 +23,19 @@ import {
 } from "recharts";
 import { Campaign, CampaignStatus, Metric, Insight } from "@/features/campaigns/types";
 import { useCampaignMutations } from "@/features/campaigns/hooks/useCampaigns";
-import { fetchMetrics } from "@/features/campaigns/api/campaigns.api";
+import { fetchMetrics, generateInsight, fetchInsights } from "@/features/campaigns/api/campaigns.api";
 import { AddMetricModal } from "@/features/campaigns/components/AddMetricModal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { formatCurrency, formatCompact } from "@/shared/format/numbers";
+import { formatDateShort, formatDateMedium, formatRelativeTime } from "@/shared/format/dates";
+import { getInitials, humanizeEnum } from "@/shared/format/strings";
 import { cn } from "@/lib/utils";
 
 // ── Helpers ────────────────────────────────────────────────
 
-function formatDate(d: string | null | undefined): string {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function formatNum(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString();
-}
-
-function formatCurrency(n: number): string {
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}k`;
-  return `$${n.toFixed(2)}`;
-}
-
 function formatGoal(goal: string | null | undefined): string {
   if (!goal) return "—";
-  return goal
-    .split("_")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
-
-function formatRelativeTime(dateStr: string): string {
-  const diffMs = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  const hours = Math.floor(diffMs / 3_600_000);
-  const days = Math.floor(diffMs / 86_400_000);
-  if (mins < 60) return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
-  return formatDate(dateStr);
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  return humanizeEnum(goal);
 }
 
 function pctChange(recent: number, prev: number): string | null {
@@ -135,7 +95,7 @@ function ChartTooltip({
     <div className="bg-card border border-border rounded-lg shadow-sm px-3 py-2">
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
       <p className="text-sm font-semibold">
-        {tab === "spend" ? formatCurrency(val) : formatNum(val)}
+        {tab === "spend" ? formatCurrency(val) : formatCompact(val)}
       </p>
     </div>
   );
@@ -177,12 +137,9 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
     try {
       setGenerating(true);
       setInsightError(null);
-      const res = await fetch(`/api/campaigns/${campaign.id}/insights`, {
-        method: "POST",
-      });
-      if (!res.ok) throw new Error("Failed to generate insights");
-      const data = await res.json();
-      setInsights(data.insights);
+      await generateInsight(campaign.id);
+      const updated = await fetchInsights(campaign.id);
+      setInsights(updated);
     } catch (err) {
       setInsightError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -250,17 +207,17 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
     },
     {
       label: "IMPRESSIONS",
-      value: noMetrics ? "—" : formatNum(totalImpressions),
+      value: noMetrics ? "—" : formatCompact(totalImpressions),
       change: pctChange(rImpressions, pImpressions),
     },
     {
       label: "CLICKS",
-      value: noMetrics ? "—" : formatNum(totalClicks),
+      value: noMetrics ? "—" : formatCompact(totalClicks),
       change: pctChange(rClicks, pClicks),
     },
     {
       label: "CONVERSIONS",
-      value: noMetrics ? "—" : formatNum(totalConversions),
+      value: noMetrics ? "—" : formatCompact(totalConversions),
       change: pctChange(rConversions, pConversions),
     },
     {
@@ -311,7 +268,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
       })),
     {
       title: "Campaign created",
-      description: `Added on ${formatDate(campaign.createdAt)}`,
+      description: `Added on ${formatDateMedium(campaign.createdAt)}`,
       date: campaign.createdAt,
     },
   ]
@@ -404,9 +361,9 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
           <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-3.5">
             <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
               <CalendarIcon className="w-4 h-4" />
-              <span>{formatDate(campaign.startDate ?? campaign.createdAt)}</span>
+              <span>{formatDateMedium(campaign.startDate ?? campaign.createdAt)}</span>
               <span className="text-muted-foreground/50">→</span>
-              <span>{formatDate(campaign.endDate ?? campaign.deadline)}</span>
+              <span>{formatDateMedium(campaign.endDate ?? campaign.deadline)}</span>
             </div>
             <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
               <div
@@ -612,8 +569,8 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                 {[
                   { label: "GOAL", value: formatGoal(campaign.goal) },
                   { label: "PLATFORM", value: campaign.platform },
-                  { label: "DEADLINE", value: formatDate(campaign.deadline) },
-                  { label: "CREATED", value: formatDate(campaign.createdAt) },
+                  { label: "DEADLINE", value: formatDateMedium(campaign.deadline) },
+                  { label: "CREATED", value: formatDateMedium(campaign.createdAt) },
                   { label: "CLIENT", value: campaign.client?.name ?? "—" },
                   { label: "STATUS", value: <StatusBadge status={campaign.status} /> },
                 ].map(({ label, value }) => (
@@ -718,7 +675,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) =>
-                    activeChart === "spend" ? `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}` : formatNum(v)
+                    activeChart === "spend" ? formatCurrency(v) : formatCompact(v)
                   }
                 />
                 <Tooltip

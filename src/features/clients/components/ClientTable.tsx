@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Client } from "@/features/clients/types";
+import { getInitials } from "@/shared/format/strings";
 import { cn } from "@/lib/utils";
 
 interface ClientTableProps {
@@ -17,23 +18,14 @@ interface ClientTableProps {
   onDelete: (id: string) => void;
 }
 
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
 export function ClientTable({ clients, onDelete }: ClientTableProps) {
   const router = useRouter();
 
   return (
-    <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] shadow-card overflow-hidden">
+    <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
       <table className="w-full">
         {/* HEADER */}
-        <thead className="bg-[hsl(var(--muted)/0.5)] border-b border-[hsl(var(--border))]">
+        <thead className="bg-muted/50 border-b border-border">
           <tr>
             {[
               { label: "Client", cls: "" },
@@ -48,7 +40,7 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
               <th
                 key={h.label}
                 className={cn(
-                  "text-[11px] uppercase tracking-wider font-medium text-[hsl(var(--muted-foreground))] px-5 py-3 text-left",
+                  "text-[11px] uppercase tracking-wider font-medium text-muted-foreground px-5 py-3 text-left",
                   h.cls,
                 )}
               >
@@ -64,7 +56,7 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
             <tr
               key={client.id}
               onClick={() => router.push(`/clients/${client.id}`)}
-              className="group border-b border-[hsl(var(--border)/0.5)] hover:bg-[hsl(var(--muted)/0.4)] cursor-pointer transition-colors last:border-0"
+              className="group border-b border-border/50 hover:bg-muted/40 cursor-pointer transition-colors last:border-0"
             >
               {/* CLIENT */}
               <td className="px-5 py-3">
@@ -72,7 +64,7 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
                   <div className="w-8 h-8 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center shrink-0">
                     {getInitials(client.name)}
                   </div>
-                  <span className="text-sm font-medium text-[hsl(var(--foreground))] truncate max-w-[160px]">
+                  <span className="text-sm font-medium truncate max-w-[160px]">
                     {client.name}
                   </span>
                 </div>
@@ -151,7 +143,7 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+                    className="text-muted-foreground hover:text-foreground"
                     onClick={() => router.push(`/clients/${client.id}`)}
                   >
                     View <ArrowRight className="ml-1 h-3 w-3" />

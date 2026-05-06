@@ -5,6 +5,7 @@ import {
   UpdateCampaignInput,
   Metric,
   CreateMetricInput,
+  Insight,
 } from "@/features/campaigns/types";
 
 const BASE_URL = "/api/campaigns";
@@ -15,9 +16,6 @@ export async function getCampaigns(): Promise<CampaignListItem[]> {
   return res.json();
 }
 
-export async function fetchCampaigns(): Promise<CampaignListItem[]> {
-  return getCampaigns();
-}
 
 export async function fetchCampaign(id: string): Promise<CampaignResponse> {
   const res = await fetch(`${BASE_URL}/${id}`);
@@ -75,7 +73,7 @@ export async function createMetric(
 
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.error ?? "Failed to save metrics");
+    throw new Error(error.message ?? error.error ?? "Failed to save metrics");
   }
 
   return res.json();
@@ -85,4 +83,11 @@ export async function fetchMetrics(campaignId: string): Promise<Metric[]> {
   const res = await fetch(`/api/campaigns/${campaignId}/metrics`);
   if (!res.ok) throw new Error("Failed to fetch metrics");
   return res.json();
+}
+
+export async function fetchInsights(campaignId: string): Promise<Insight[]> {
+  const res = await fetch(`${BASE_URL}/${campaignId}/insights`);
+  if (!res.ok) throw new Error("Failed to fetch insights");
+  const data = await res.json();
+  return data.insights;
 }

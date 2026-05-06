@@ -18,6 +18,8 @@ import { EditClientForm } from "@/features/clients/components/EditClientForm";
 import { Client, Campaign } from "@/features/clients/types";
 import { Insight } from "@/features/campaigns/types";
 import { useClientMutations } from "@/features/clients/hooks/useClients";
+import { getInitials } from "@/shared/format/strings";
+import { formatRelativeTime, formatDateLong } from "@/shared/format/dates";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -74,20 +76,6 @@ const INSIGHT_UI = {
     Icon: Lightbulb,
   },
 } as const;
-function relativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const s = Math.floor(diff / 1000);
-  if (s < 60) return "Just now";
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  if (d < 30) return `${d}d ago`;
-  const mo = Math.floor(d / 30);
-  if (mo < 12) return `${mo}mo ago`;
-  return `${Math.floor(mo / 12)}y ago`;
-}
 
 function CampaignTableHeader() {
   return (
@@ -151,12 +139,7 @@ export function ClientDetail({
     router.refresh();
   };
 
-  const initials = client.name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  const initials = getInitials(client.name);
 
   const activeCampaigns = campaigns.filter((c) => c.status === "active").length;
 
@@ -178,7 +161,7 @@ export function ClientDetail({
     },
     {
       label: "Last Activity",
-      value: relativeTime(lastActivityDate),
+      value: formatRelativeTime(lastActivityDate),
       valueClass: "",
     },
   ];
@@ -240,14 +223,7 @@ export function ClientDetail({
                 </span>
               )}
               {client.email && <span>{client.email}</span>}
-              <span>
-                Added{" "}
-                {new Date(client.createdAt).toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </span>
+              <span>Added {formatDateLong(client.createdAt)}</span>
             </div>
           </div>
         </div>
@@ -428,7 +404,7 @@ export function ClientDetail({
                                   </span>
                                 )}
                                 <span className="ml-auto text-xs text-muted-foreground/70">
-                                  {relativeTime(insight.createdAt)}
+                                  {formatRelativeTime(insight.createdAt)}
                                 </span>
                               </div>
 
@@ -471,17 +447,7 @@ export function ClientDetail({
                     { label: "Email", value: client.email },
                     { label: "Phone", value: client.phone },
                     { label: "Website", value: client.website },
-                    {
-                      label: "Added On",
-                      value: new Date(client.createdAt).toLocaleDateString(
-                        "en-US",
-                        {
-                          month: "long",
-                          day: "numeric",
-                          year: "numeric",
-                        },
-                      ),
-                    },
+                    { label: "Added On", value: formatDateLong(client.createdAt) },
                   ].map((item) => (
                     <div key={item.label} className="space-y-0.5">
                       <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
