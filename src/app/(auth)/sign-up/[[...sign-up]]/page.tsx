@@ -1,9 +1,25 @@
 "use client";
 
+import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { useSignUp } from "@clerk/nextjs/legacy";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect, type FormEvent } from "react";
 import { Eye, EyeOff, Lock, Mail, User, Loader2 } from "lucide-react";
+
+type ClerkErrorShape = {
+  errors?: Array<{
+    longMessage?: string;
+    message?: string;
+  }>;
+};
+
+function getClerkErrorMessage(err: unknown, fallback: string) {
+  if (typeof err !== "object" || err === null) return fallback;
+  const maybe = err as ClerkErrorShape;
+  const first = maybe.errors?.[0];
+  return first?.longMessage || first?.message || fallback;
+}
 
 const GoogleIcon = () => (
   <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" aria-hidden="true">
@@ -27,6 +43,7 @@ const GoogleIcon = () => (
 );
 
 export default function SignUpPage() {
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const { isLoaded, signUp, setActive } = useSignUp();
   const router = useRouter();
   const firstNameRef = useRef<HTMLInputElement>(null);
@@ -52,6 +69,11 @@ export default function SignUpPage() {
     firstNameRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    if (!authLoaded) return;
+    if (isSignedIn) router.replace("/dashboard");
+  }, [authLoaded, isSignedIn, router]);
+
   const validate = () => {
     const next: typeof errors = {};
     if (!firstName.trim()) next.firstName = "First name is required";
@@ -67,7 +89,11 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!isLoaded || !validate()) return;
+    if (!validate()) return;
+    if (!isLoaded) {
+      setErrors({ general: "Auth is still loading. Please wait 1–2 seconds and try again." });
+      return;
+    }
 
     try {
       setLoading(true);
@@ -85,11 +111,11 @@ export default function SignUpPage() {
       });
 
       setPendingVerification(true);
-    } catch (err: any) {
-      const message =
-        err?.errors?.[0]?.longMessage ??
-        err?.errors?.[0]?.message ??
-        "Something went wrong. Please try again.";
+    } catch (err: unknown) {
+      const message = getClerkErrorMessage(
+        err,
+        "Something went wrong. Please try again.",
+      );
       setErrors({ general: message });
     } finally {
       setLoading(false);
@@ -98,7 +124,10 @@ export default function SignUpPage() {
 
   const handleVerification = async (e: FormEvent) => {
     e.preventDefault();
-    if (!isLoaded) return;
+    if (!isLoaded) {
+      setErrors({ code: "Auth is still loading. Please wait 1–2 seconds and try again." });
+      return;
+    }
 
     try {
       setLoading(true);
@@ -110,11 +139,8 @@ export default function SignUpPage() {
         await setActive({ session: result.createdSessionId });
         router.push("/dashboard");
       }
-    } catch (err: any) {
-      const message =
-        err?.errors?.[0]?.longMessage ??
-        err?.errors?.[0]?.message ??
-        "Invalid verification code";
+    } catch (err: unknown) {
+      const message = getClerkErrorMessage(err, "Invalid verification code");
       setErrors({ code: message });
     } finally {
       setLoading(false);
@@ -122,7 +148,10 @@ export default function SignUpPage() {
   };
 
   const handleGoogleSignUp = async () => {
-    if (!isLoaded) return;
+    if (!isLoaded) {
+      setErrors({ general: "Auth is still loading. Please wait 1–2 seconds and try again." });
+      return;
+    }
     try {
       setGoogleLoading(true);
       await signUp.authenticateWithRedirect({
@@ -130,9 +159,12 @@ export default function SignUpPage() {
         redirectUrl: "/sso-callback",
         redirectUrlComplete: "/dashboard",
       });
-    } catch (err) {
+    } catch (err: unknown) {
+      setErrors({
+        general: getClerkErrorMessage(err, "Google sign up failed. Please try again."),
+      });
+    } finally {
       setGoogleLoading(false);
-      setErrors({ general: "Google sign up failed. Please try again." });
     }
   };
 
@@ -141,6 +173,11 @@ export default function SignUpPage() {
     return (
       <div className="w-full max-w-[400px]">
         <div className="rounded-2xl border border-zinc-200 bg-white p-7 shadow-lg sm:p-8">
+          <div
+            id="clerk-captcha"
+            className="h-0 w-0 overflow-hidden"
+            aria-hidden="true"
+          />
           <div className="mb-7 space-y-1.5">
             <h2 className="text-[26px] font-bold tracking-tight text-zinc-900">
               Check your email
@@ -213,6 +250,11 @@ export default function SignUpPage() {
   return (
     <div className="w-full max-w-[400px]">
       <div className="rounded-2xl border border-zinc-200 bg-white p-7 shadow-lg sm:p-8">
+        <div
+          id="clerk-captcha"
+          className="h-0 w-0 overflow-hidden"
+          aria-hidden="true"
+        />
         {/* Header */}
         <div className="mb-7 space-y-1.5">
           <h2 className="text-[26px] font-bold tracking-tight text-zinc-900">
@@ -224,6 +266,13 @@ export default function SignUpPage() {
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          {!isLoaded && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+              <p className="text-xs font-medium text-amber-700">
+                Loading auth…
+              </p>
+            </div>
+          )}
           {errors.general && (
             <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2.5">
               <p className="text-xs font-medium text-red-600">
@@ -422,12 +471,12 @@ export default function SignUpPage() {
         {/* Sign in */}
         <p className="mt-6 text-center text-sm text-zinc-500">
           Already have an account?{" "}
-          <a
+          <Link
             href="/sign-in"
             className="font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
           >
             Sign in
-          </a>
+          </Link>
         </p>
       </div>
 
