@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ export function EditClientForm({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     reset,
     formState: { errors },
@@ -79,7 +79,7 @@ export function EditClientForm({
     });
   }, [client, reset]);
 
-  const watched = watch();
+  const watched = useWatch({ control });
 
   const onSubmit = async (data: CreateClientSchema) => {
     try {
@@ -122,7 +122,7 @@ export function EditClientForm({
         </div>
 
         {/* Industry + Email */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>Industry</Label>
             <Select
@@ -159,7 +159,7 @@ export function EditClientForm({
         </div>
 
         {/* Phone + Website */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="edit-phone">Phone</Label>
             <Input

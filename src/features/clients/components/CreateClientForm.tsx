@@ -3,7 +3,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import {
   createClientSchema,
   CreateClientSchema,
 } from "@/features/clients/schemas";
+import { getInitials } from "@/shared/format/strings";
 
 const INDUSTRIES = [
   "SaaS",
@@ -42,7 +43,7 @@ export function CreateClientForm() {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     formState: { errors },
   } = useForm<CreateClientSchema>({
@@ -58,7 +59,7 @@ export function CreateClientForm() {
     },
   });
 
-  const watched = watch();
+  const watched = useWatch({ control });
 
   const onSubmit = async (data: CreateClientSchema) => {
     try {
@@ -70,14 +71,7 @@ export function CreateClientForm() {
     }
   };
 
-  const initials = watched.name
-    ? watched.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : "?";
+  const initials = watched.name ? getInitials(watched.name) : "?";
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="w-full">
@@ -119,7 +113,7 @@ export function CreateClientForm() {
           </div>
 
           {/* Industry + Email side by side */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Industry</Label>
               <Select
@@ -157,7 +151,7 @@ export function CreateClientForm() {
           </div>
 
           {/* Phone + Website side by side */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
               <Input

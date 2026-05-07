@@ -15,8 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { EditClientForm } from "@/features/clients/components/EditClientForm";
-import { Client, Campaign } from "@/features/clients/types";
-import { Insight } from "@/features/campaigns/types";
+import { Client, Campaign, ClientInsight } from "@/features/clients/types";
 import { useClientMutations } from "@/features/clients/hooks/useClients";
 import { getInitials } from "@/shared/format/strings";
 import { formatRelativeTime, formatDateLong } from "@/shared/format/dates";
@@ -31,7 +30,7 @@ import {
 
 interface ClientDetailProps {
   client: Client;
-  insights: Insight[];
+  insights: ClientInsight[];
   initialEdit?: boolean;
   onEditSuccess?: () => void;
 }
@@ -80,7 +79,7 @@ const INSIGHT_UI = {
 function CampaignTableHeader() {
   return (
     <div
-      className="grid gap-4 px-4 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border"
+      className="grid min-w-[420px] gap-4 border-b border-border px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
       style={{ gridTemplateColumns: "2fr 1fr 1fr" }}
     >
       <span>Campaign</span>
@@ -94,7 +93,7 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
   const router = useRouter();
   return (
     <div
-      className="grid gap-4 px-4 py-3 items-center hover:bg-muted/40 cursor-pointer transition-colors"
+      className="grid min-w-[420px] cursor-pointer items-center gap-4 px-4 py-3 transition-colors hover:bg-muted/40"
       style={{ gridTemplateColumns: "2fr 1fr 1fr" }}
       onClick={() => router.push(`/campaigns/${campaign.id}`)}
     >
@@ -136,7 +135,13 @@ export function ClientDetail({
   const handleEditSuccess = () => {
     setIsEditing(false);
     onEditSuccess?.();
+    router.replace(`/clients/${client.id}`, { scroll: false });
     router.refresh();
+  };
+
+  const closeEdit = () => {
+    setIsEditing(false);
+    router.replace(`/clients/${client.id}`, { scroll: false });
   };
 
   const initials = getInitials(client.name);
@@ -196,7 +201,7 @@ export function ClientDetail({
       </button>
 
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg font-bold shrink-0">
             {initials}
@@ -228,9 +233,10 @@ export function ClientDetail({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           <Button
             size="sm"
+            className="w-fit"
             onClick={() => router.push(`/campaigns/new?clientId=${client.id}`)}
           >
             <Plus className="h-4 w-4 mr-1" />
@@ -273,14 +279,14 @@ export function ClientDetail({
         <EditClientForm
           client={client}
           onSuccess={handleEditSuccess}
-          onCancel={() => setIsEditing(false)}
+          onCancel={closeEdit}
         />
       )}
 
       {!isEditing && (
         <>
           {/* Stats Row */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat) => (
               <div
                 key={stat.label}
@@ -300,13 +306,13 @@ export function ClientDetail({
           </div>
 
           {/* Custom Tab Bar */}
-          <div className="border-b border-border flex gap-6">
+          <div className="flex gap-6 overflow-x-auto border-b border-border">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  "pb-3 text-sm transition-colors",
+                  "shrink-0 pb-3 text-sm transition-colors",
                   activeTab === tab.key
                     ? "border-b-2 border-primary text-primary font-medium"
                     : "text-muted-foreground hover:text-foreground",
@@ -319,10 +325,10 @@ export function ClientDetail({
 
           {/* Overview Tab */}
           {activeTab === "overview" && (
-            <div className="grid grid-cols-[3fr_2fr] gap-3 items-start">
+            <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[3fr_2fr]">
               {/* Left: Campaigns + AI Insights */}
               <div className="space-y-3">
-                <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                     <h2 className="text-sm font-semibold">Campaigns</h2>
                     {campaigns.length > 5 && (
@@ -335,14 +341,14 @@ export function ClientDetail({
                     )}
                   </div>
                   {campaigns.length > 0 ? (
-                    <>
+                    <div className="overflow-x-auto">
                       <CampaignTableHeader />
                       <div className="divide-y divide-border">
                         {campaigns.slice(0, 5).map((c) => (
                           <CampaignRow key={c.id} campaign={c} />
                         ))}
                       </div>
-                    </>
+                    </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-10 gap-2">
                       <p className="text-sm text-muted-foreground">
@@ -463,16 +469,16 @@ export function ClientDetail({
 
           {/* Campaigns Tab */}
           {activeTab === "campaigns" && (
-            <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
               {campaigns.length > 0 ? (
-                <>
+                <div className="overflow-x-auto">
                   <CampaignTableHeader />
                   <div className="divide-y divide-border">
                     {campaigns.map((c) => (
                       <CampaignRow key={c.id} campaign={c} />
                     ))}
                   </div>
-                </>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-16 gap-2">
                   <p className="text-sm text-muted-foreground">

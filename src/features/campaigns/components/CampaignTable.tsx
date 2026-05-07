@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Sparkles, MoreHorizontal, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,10 +103,13 @@ function TableSkeleton() {
 
 export function CampaignTable() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { campaigns, isLoading, loadingInsights, error, counts, clientList } = useCampaignList();
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedClientId, setSelectedClientId] = useState<string>("all");
+  const [selectedClientId, setSelectedClientId] = useState<string>(
+    searchParams.get("clientId") ?? "all"
+  );
 
   const filtered = campaigns
     .filter((c) => {

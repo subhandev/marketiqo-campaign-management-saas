@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MoreHorizontal, ArrowRight } from "lucide-react";
 import {
@@ -9,21 +10,39 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { Client } from "@/features/clients/types";
 import { getInitials } from "@/shared/format/strings";
+import { formatDateMedium } from "@/shared/format/dates";
 import { cn } from "@/lib/utils";
 
 interface ClientTableProps {
   clients: Client[];
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => void | Promise<void>;
 }
 
 export function ClientTable({ clients, onDelete }: ClientTableProps) {
   const router = useRouter();
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!clientToDelete) return;
+
+    try {
+      setDeleting(true);
+      await onDelete(clientToDelete.id);
+      setClientToDelete(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
+    <>
     <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-      <table className="w-full">
+      <div className="w-full overflow-x-auto">
+      <table className="w-full min-w-[760px]">
         {/* HEADER */}
         <thead className="bg-muted/50 border-b border-border">
           <tr>
@@ -127,11 +146,7 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
 
               {/* CREATED */}
               <td className="hidden md:table-cell px-5 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                {new Date(client.createdAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+                {formatDateMedium(client.createdAt)}
               </td>
 
               {/* ACTIONS */}
@@ -149,7 +164,7 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
                     View <ArrowRight className="ml-1 h-3 w-3" />
                   </Button>
 
-                  <div className="opacity-0 group-hover:opacity-100 transition">
+                  <div className="opacity-100 transition">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer">
@@ -170,7 +185,7 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
-                          onClick={() => onDelete(client.id)}
+                          onClick={() => setClientToDelete(client)}
                         >
                           Delete
                         </DropdownMenuItem>
@@ -183,6 +198,20 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
+    <ConfirmModal
+      open={!!clientToDelete}
+      title="Delete client?"
+      description={`This will permanently delete "${clientToDelete?.name ?? "this client"}" and all associated campaigns, metrics, and insights. This action cannot be undone.`}
+      confirmLabel="Delete Client"
+      loadingLabel="Deleting..."
+      loading={deleting}
+      onConfirm={handleConfirmDelete}
+      onCancel={() => {
+        if (!deleting) setClientToDelete(null);
+      }}
+    />
+    </>
   );
 }

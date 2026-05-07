@@ -13,6 +13,15 @@ export type Campaign = {
   createdAt: string;
 };
 
+export type ClientInsight = {
+  id: string;
+  campaignId: string;
+  type: string;
+  content: string;
+  score: number | null;
+  createdAt: string;
+};
+
 export type Client = {
   id: string;
   workspaceId: string;
@@ -26,6 +35,9 @@ export type Client = {
   status: ClientStatus;
   createdAt: string;
   updatedAt: string;
+  workspace?: {
+    isDemo: boolean;
+  };
   campaigns?: Campaign[];
   _count?: {
     campaigns: number;
@@ -37,6 +49,8 @@ export type CreateClientInput = {
   company?: string;
   industry?: string;
   email?: string;
+  phone?: string;
+  website?: string;
   notes?: string;
 };
 
@@ -51,4 +65,5 @@ export type ClientsResponse = {
 
 export type ClientResponse = {
   client: Client;
+  insights?: ClientInsight[];
 };

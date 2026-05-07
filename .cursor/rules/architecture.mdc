@@ -15,7 +15,7 @@ alwaysApply: true
 - Repositories in `src/server/<domain>/*.repository.ts` own Prisma queries only. Keep them persistence-focused and avoid product/business branching there.
 - Shared backend concerns belong in focused `src/server/<shared-domain>/` modules, such as `src/server/workspace/resolve-workspace.ts` for workspace selection.
 - Use the Prisma singleton from `src/server/db/client.ts`; do not instantiate `PrismaClient` elsewhere.
-- For workspace-scoped domains, list/read operations should resolve the active workspace before entering domain handlers, and write operations should intentionally resolve the real workspace when demo data exists.
+- For workspace-scoped domains, read and write operations should resolve the active workspace before entering domain handlers. While demo data is active, the demo workspace is an editable sandbox; resetting demo data switches the active workspace to the real workspace.
 - Keep server code independent from React components. If server code needs shared TypeScript types, prefer extracting stable domain types instead of importing component-specific details.
 
 ## Frontend

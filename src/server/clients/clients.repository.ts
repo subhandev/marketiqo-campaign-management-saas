@@ -8,6 +8,9 @@ export async function getClientsByWorkspace(workspaceId: string) {
     where: { workspaceId },
     orderBy: { createdAt: "desc" },
     include: {
+      workspace: {
+        select: { isDemo: true },
+      },
       _count: {
         select: { campaigns: true },
       },
@@ -15,12 +18,20 @@ export async function getClientsByWorkspace(workspaceId: string) {
   });
 }
 
-export async function getClientById(id: string, clerkUserId: string) {
+export async function getClientById(id: string, workspaceId: string) {
   return prisma.client.findFirst({
-    where: { id, workspace: { user: { clerkUserId } } },
+    where: { id, workspaceId },
     include: {
+      workspace: {
+        select: { isDemo: true },
+      },
       campaigns: {
         orderBy: { createdAt: "desc" },
+        include: {
+          insights: {
+            orderBy: { createdAt: "desc" },
+          },
+        },
       },
     },
   });
@@ -43,14 +54,33 @@ export async function updateClient(
   workspaceId: string,
   data: UpdateClientInput
 ) {
-  return prisma.client.update({
-    where: { id },
+  const result = await prisma.client.updateMany({
+    where: { id, workspaceId },
     data,
   });
+
+  if (result.count === 0) return null;
+  return getClientById(id, workspaceId);
 }
 
 export async function deleteClient(id: string, workspaceId: string) {
-  return prisma.client.delete({
-    where: { id },
+  return prisma.$transaction(async (tx) => {
+    const client = await tx.client.findFirst({
+      where: { id, workspaceId },
+      select: { id: true },
+    });
+
+    if (!client) return false;
+
+    await tx.insight.deleteMany({
+      where: { campaign: { clientId: id } },
+    });
+    await tx.metric.deleteMany({
+      where: { campaign: { clientId: id } },
+    });
+    await tx.campaign.deleteMany({ where: { clientId: id } });
+    await tx.client.delete({ where: { id } });
+
+    return true;
   });
 }

@@ -1,7 +1,6 @@
 // src/features/clients/api/clients.api.ts
 
 import {
-  Client,
   ClientsResponse,
   ClientResponse,
   CreateClientInput,
@@ -41,7 +40,7 @@ export async function createClient(
 
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.message ?? "Failed to create client");
+    throw new Error(error.message ?? error.error ?? "Failed to create client");
   }
 
   return res.json();
@@ -59,7 +58,7 @@ export async function updateClient(
 
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.message ?? "Failed to update client");
+    throw new Error(error.message ?? error.error ?? "Failed to update client");
   }
 
   return res.json();
