@@ -89,14 +89,14 @@ export function ClientListView() {
             Manage all your clients and their campaigns
           </p>
         </div>
-        <Button className="w-fit" onClick={() => router.push("/clients/new")}>
+        <Button className="w-full sm:w-fit" onClick={() => router.push("/clients/new")}>
           <Plus className="mr-2 h-4 w-4" />
           Add Client
         </Button>
       </div>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-border bg-muted/35 p-1">
+        <div className="flex w-full max-w-full gap-1 overflow-x-auto rounded-xl border border-border bg-muted/35 p-1 lg:w-fit">
           {FILTERS.map((item) => {
             const active = filter === item.value;
             const count = statusCounts[item.value];

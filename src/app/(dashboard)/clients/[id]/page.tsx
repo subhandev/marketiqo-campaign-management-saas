@@ -1,7 +1,6 @@
 "use client";
 
 import { use } from "react";
-import { useSearchParams } from "next/navigation";
 import { ClientDetail } from "@/features/clients/components/ClientDetail";
 import { ClientDetailSkeleton } from "@/features/clients/components/ClientDetailSkeleton";
 import { useClient } from "@/features/clients/hooks/useClients";
@@ -12,9 +11,7 @@ export default function ClientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const searchParams = useSearchParams();
-  const initialEdit = searchParams.get("edit") === "true";
-  const { client, insights, loading, error, refresh } = useClient(id);
+  const { client, insights, loading, error } = useClient(id);
 
   if (loading) return <ClientDetailSkeleton />;
 
@@ -30,8 +27,6 @@ export default function ClientDetailPage({
     <ClientDetail
       client={client}
       insights={insights}
-      initialEdit={initialEdit}
-      onEditSuccess={refresh}
     />
   );
 }

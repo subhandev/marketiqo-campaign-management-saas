@@ -179,7 +179,7 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
                           View
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => router.push(`/clients/${client.id}?edit=true`)}
+                          onClick={() => router.push(`/clients/${client.id}/edit`)}
                         >
                           Edit
                         </DropdownMenuItem>
