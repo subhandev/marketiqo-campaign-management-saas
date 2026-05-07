@@ -56,6 +56,9 @@ export type CampaignListItem = {
     budget: number;
     clicks: number;
     conversions: number;
+    spendChange: number | null;
+    clicksChange: number | null;
+    conversionsChange: number | null;
     recordedAt: string;
   } | null;
   latestInsight: {

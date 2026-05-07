@@ -80,7 +80,7 @@ export async function findManyByWorkspace(workspaceId: string) {
       },
       metrics: {
         orderBy: { date: "desc" },
-        take: 1,
+        take: 2,
         select: { spend: true, clicks: true, conversions: true, date: true },
       },
       insights: {

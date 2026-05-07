@@ -30,35 +30,50 @@ const STATUS_ORDER: Record<string, number> = {
   archived: 5,
 };
 
+function calculateChange(current: number, previous: number | null | undefined) {
+  if (!previous || previous <= 0) return null;
+  return (current - previous) / previous;
+}
+
 export async function getCampaignList(workspaceId: string) {
   const raw = await findManyByWorkspace(workspaceId);
 
-  const campaigns = raw.map((c) => ({
-    id: c.id,
-    name: c.name,
-    platform: c.platform,
-    status: c.status,
-    startDate: c.startDate?.toISOString() ?? null,
-    endDate: c.endDate?.toISOString() ?? null,
-    client: c.client,
-    _count: c._count,
-    latestMetric: c.metrics[0]
-      ? {
-          spend: c.metrics[0].spend,
-          budget: c.budget ?? 0,
-          clicks: c.metrics[0].clicks,
-          conversions: c.metrics[0].conversions ?? 0,
-          recordedAt: c.metrics[0].date.toISOString(),
-        }
-      : null,
-    latestInsight: c.insights[0]
-      ? {
-          id: c.insights[0].id,
-          content: c.insights[0].content,
-          createdAt: c.insights[0].createdAt.toISOString(),
-        }
-      : null,
-  }));
+  const campaigns = raw.map((c) => {
+    const latest = c.metrics[0] ?? null;
+    const previous = c.metrics[1] ?? null;
+    const latestConversions = latest?.conversions ?? 0;
+    const previousConversions = previous?.conversions ?? null;
+
+    return {
+      id: c.id,
+      name: c.name,
+      platform: c.platform,
+      status: c.status,
+      startDate: c.startDate?.toISOString() ?? null,
+      endDate: c.endDate?.toISOString() ?? null,
+      client: c.client,
+      _count: c._count,
+      latestMetric: latest
+        ? {
+            spend: latest.spend,
+            budget: c.budget ?? 0,
+            clicks: latest.clicks,
+            conversions: latestConversions,
+            spendChange: calculateChange(latest.spend, previous?.spend),
+            clicksChange: calculateChange(latest.clicks, previous?.clicks),
+            conversionsChange: calculateChange(latestConversions, previousConversions),
+            recordedAt: latest.date.toISOString(),
+          }
+        : null,
+      latestInsight: c.insights[0]
+        ? {
+            id: c.insights[0].id,
+            content: c.insights[0].content,
+            createdAt: c.insights[0].createdAt.toISOString(),
+          }
+        : null,
+    };
+  });
 
   return campaigns.sort(
     (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99)
