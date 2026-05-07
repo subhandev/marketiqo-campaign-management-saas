@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Bell, CircleHelp, PanelLeftOpen } from "lucide-react";
+import { Bell, CircleHelp, PanelLeftOpen } from "lucide-react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import {
@@ -31,7 +31,7 @@ export function Header({
       style={{ background: "hsl(var(--background) / 0.85)" }}
     >
       {/* Left */}
-      <div className="flex items-center gap-2 min-w-0 flex-1">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <button
           type="button"
           onClick={onMobileMenuClick}
@@ -40,14 +40,6 @@ export function Header({
         >
           <PanelLeftOpen size={16} />
         </button>
-
-        <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 h-10 w-full min-w-0 md:max-w-[20rem] focus-within:bg-background focus-within:ring-1 focus-within:ring-ring transition-colors">
-          <Search size={14} className="text-muted-foreground shrink-0" />
-          <input
-            placeholder="Search..."
-            className="bg-transparent text-sm outline-none flex-1 min-w-0"
-          />
-        </div>
       </div>
 
       {/* Right */}
