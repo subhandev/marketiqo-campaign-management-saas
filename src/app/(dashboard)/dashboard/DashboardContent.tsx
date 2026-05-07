@@ -299,7 +299,7 @@ function LoadingSkeleton() {
         </div>
         <Skeleton className="h-4 w-36 mt-1.5" />
       </div>
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] p-5 shadow-card space-y-3">
             <div className="flex items-center justify-between">
@@ -311,11 +311,11 @@ function LoadingSkeleton() {
           </div>
         ))}
       </div>
-      <div className="grid gap-4" style={{ gridTemplateColumns: "2fr 3fr" }}>
-        <Skeleton className="h-52 rounded-xl" />
-        <Skeleton className="h-52 rounded-xl" />
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <Skeleton className="h-52 rounded-xl lg:col-span-2" />
+        <Skeleton className="h-52 rounded-xl lg:col-span-3" />
       </div>
-      <div className="grid grid-cols-[1fr_300px] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
         <Skeleton className="h-64 rounded-xl" />
         <Skeleton className="h-64 rounded-xl" />
       </div>
@@ -519,7 +519,7 @@ export function DashboardContent() {
       </div>
 
       {/* ── Row 1 — KPI cards ── */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {statCards.map((stat) => (
           <div
             key={stat.label}
@@ -555,14 +555,15 @@ export function DashboardContent() {
       </div>
 
       {/* ── Row 2 — Needs Attention + AI Summary ── */}
-      <div className="grid gap-4" style={{ gridTemplateColumns: "2fr 3fr" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
         {/* Needs Attention — dynamic severity */}
         <div
           className={cn(
             "rounded-xl p-5 shadow-card border",
             sev.cardBg,
-            sev.cardBorder
+            sev.cardBorder,
+            "lg:col-span-2"
           )}
         >
           <div className="flex items-center gap-2">
@@ -640,7 +641,7 @@ export function DashboardContent() {
         </div>
 
         {/* AI Summary */}
-        <div className="bg-[hsl(var(--brand-soft))] border border-[hsl(var(--brand)/0.2)] rounded-xl p-5 shadow-card">
+        <div className="bg-[hsl(var(--brand-soft))] border border-[hsl(var(--brand)/0.2)] rounded-xl p-5 shadow-card lg:col-span-3">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-ai flex items-center justify-center shrink-0">
               <Sparkles size={14} className="text-white" />
@@ -701,7 +702,7 @@ export function DashboardContent() {
       </div>
 
       {/* ── Row 3 — Recent Campaigns + Recent Clients ── */}
-      <div className="grid grid-cols-[1fr_300px] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
 
         {/* Recent Campaigns */}
         <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] shadow-card overflow-hidden">
@@ -728,57 +729,59 @@ export function DashboardContent() {
               No campaigns yet.
             </div>
           ) : (
-            <table className="w-full">
-              <thead className="bg-[hsl(var(--muted)/0.5)] border-b border-[hsl(var(--border))]">
-                <tr>
-                  {["Campaign", "Client", "Platform", "Due", "Status", "Owner"].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="text-[10px] uppercase tracking-wider font-medium text-[hsl(var(--muted-foreground))] px-5 py-2.5 text-left"
-                      >
-                        {h}
-                      </th>
-                    )
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {campaigns.map((c) => (
-                  <tr
-                    key={c.id}
-                    onClick={() => router.push(`/campaigns/${c.id}`)}
-                    className="border-b border-[hsl(var(--border)/0.5)] hover:bg-[hsl(var(--muted)/0.4)] cursor-pointer transition-colors last:border-0"
-                  >
-                    <td className="px-5 py-3 text-sm font-medium text-[hsl(var(--foreground))] max-w-[200px]">
-                      <span className="truncate block">{c.name}</span>
-                    </td>
-                    <td className="px-5 py-3 text-sm text-[hsl(var(--muted-foreground))] whitespace-nowrap">
-                      {c.client}
-                    </td>
-                    <td className="px-5 py-3 text-sm text-[hsl(var(--muted-foreground))] whitespace-nowrap">
-                      {c.platform}
-                    </td>
-                    <td className="px-5 py-3 text-sm text-[hsl(var(--muted-foreground))] whitespace-nowrap">
-                      {c.due}
-                    </td>
-                    <td className="px-5 py-3">
-                      <StatusBadge status={c.status} />
-                    </td>
-                    <td className="px-5 py-3">
-                      <div
-                        className={cn(
-                          "w-7 h-7 rounded-full text-white text-[10px] font-semibold flex items-center justify-center",
-                          c.ownerBg
-                        )}
-                      >
-                        {c.ownerInitials}
-                      </div>
-                    </td>
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-[760px]">
+                <thead className="bg-[hsl(var(--muted)/0.5)] border-b border-[hsl(var(--border))]">
+                  <tr>
+                    {["Campaign", "Client", "Platform", "Due", "Status", "Owner"].map(
+                      (h) => (
+                        <th
+                          key={h}
+                          className="text-[10px] uppercase tracking-wider font-medium text-[hsl(var(--muted-foreground))] px-5 py-2.5 text-left"
+                        >
+                          {h}
+                        </th>
+                      )
+                    )}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {campaigns.map((c) => (
+                    <tr
+                      key={c.id}
+                      onClick={() => router.push(`/campaigns/${c.id}`)}
+                      className="border-b border-[hsl(var(--border)/0.5)] hover:bg-[hsl(var(--muted)/0.4)] cursor-pointer transition-colors last:border-0"
+                    >
+                      <td className="px-5 py-3 text-sm font-medium text-[hsl(var(--foreground))] max-w-[200px]">
+                        <span className="truncate block">{c.name}</span>
+                      </td>
+                      <td className="px-5 py-3 text-sm text-[hsl(var(--muted-foreground))] whitespace-nowrap">
+                        {c.client}
+                      </td>
+                      <td className="px-5 py-3 text-sm text-[hsl(var(--muted-foreground))] whitespace-nowrap">
+                        {c.platform}
+                      </td>
+                      <td className="px-5 py-3 text-sm text-[hsl(var(--muted-foreground))] whitespace-nowrap">
+                        {c.due}
+                      </td>
+                      <td className="px-5 py-3">
+                        <StatusBadge status={c.status} />
+                      </td>
+                      <td className="px-5 py-3">
+                        <div
+                          className={cn(
+                            "w-7 h-7 rounded-full text-white text-[10px] font-semibold flex items-center justify-center",
+                            c.ownerBg
+                          )}
+                        >
+                          {c.ownerInitials}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
@@ -882,7 +885,7 @@ export function DashboardContent() {
             </div>
 
             {/* Legend */}
-            <div className="grid grid-cols-5 gap-6 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mt-4">
               {healthLegend.map((item) => (
                 <div key={item.label} className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">

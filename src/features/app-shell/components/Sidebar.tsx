@@ -17,6 +17,7 @@ import {
   Settings2,
   PanelLeftClose,
   PanelLeftOpen,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -51,9 +52,16 @@ const manageNav: NavItem[] = [
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar({
+  collapsed,
+  onToggle,
+  mobileOpen = false,
+  onMobileClose,
+}: SidebarProps) {
   const pathname = usePathname();
 
   const isActive = (href: string) => {
@@ -85,6 +93,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         "bg-[hsl(var(--sidebar-background))] border-r border-[hsl(var(--sidebar-border))]",
         "transition-[width] duration-200 ease-in-out",
         collapsed ? "w-14" : "w-64",
+        // Mobile drawer behavior
+        "transform transition-transform md:translate-x-0",
+        mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
       )}
     >
       {/* Logo + toggle */}
@@ -123,13 +134,29 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </div>
 
         {!collapsed && (
-          <button
-            onClick={onToggle}
-            className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--sidebar-accent))]"
-            style={{ color: "hsl(var(--sidebar-foreground) / 0.7)" }}
-          >
-            <PanelLeftClose size={14} />
-          </button>
+          <div className="flex items-center gap-1">
+            {/* Mobile close */}
+            <button
+              type="button"
+              onClick={onMobileClose}
+              className="md:hidden w-7 h-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--sidebar-accent))]"
+              style={{ color: "hsl(var(--sidebar-foreground) / 0.7)" }}
+              aria-label="Close navigation"
+            >
+              <X size={14} />
+            </button>
+
+            {/* Desktop collapse */}
+            <button
+              type="button"
+              onClick={onToggle}
+              className="hidden md:flex w-7 h-7 rounded-md items-center justify-center hover:bg-[hsl(var(--sidebar-accent))]"
+              style={{ color: "hsl(var(--sidebar-foreground) / 0.7)" }}
+              aria-label="Collapse navigation"
+            >
+              <PanelLeftClose size={14} />
+            </button>
+          </div>
         )}
       </div>
 
@@ -167,6 +194,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 key={item.label}
                 href={item.href}
                 className={navItemClass(active)}
+                onClick={() => onMobileClose?.()}
               >
                 <Icon size={15} className="shrink-0" />
                 {!collapsed && (
@@ -197,15 +225,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 {!collapsed && (
                   <>
                     <span className="truncate">{item.label}</span>
-                    <span
-                      className="ml-auto text-[10px] px-2 py-0.5 rounded-md"
-                      style={{
-                        background: "hsl(var(--sidebar-border))",
-                        color: "hsl(var(--sidebar-foreground) / 0.7)",
-                      }}
-                    >
-                      Soon
-                    </span>
                   </>
                 )}
               </div>
@@ -235,15 +254,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 {!collapsed && (
                   <>
                     <span className="truncate">{item.label}</span>
-                    <span
-                      className="ml-auto text-[10px] px-2 py-0.5 rounded-md"
-                      style={{
-                        background: "hsl(var(--sidebar-border))",
-                        color: "hsl(var(--sidebar-foreground) / 0.7)",
-                      }}
-                    >
-                      Soon
-                    </span>
                   </>
                 )}
               </div>
