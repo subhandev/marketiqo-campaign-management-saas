@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCampaignList } from "@/features/campaigns/hooks/useCampaignList";
-import { CampaignListItem } from "@/features/campaigns/types";
+import { CampaignListItem, CampaignStatus } from "@/features/campaigns/types";
 import { CAMPAIGN_STATUS_CONFIG } from "@/features/campaigns/utils/status";
 import { CampaignStatusBadge } from "@/shared/ui/CampaignStatusBadge";
 import { formatCompact } from "@/shared/format/numbers";
@@ -74,7 +74,8 @@ function InsightArea({
 
 function TableSkeleton() {
   return (
-    <div className="bg-background rounded-xl border border-border shadow-sm overflow-hidden mt-4">
+    <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-background shadow-sm">
+      <div className="min-w-[820px]">
       <div className="bg-muted/50 border-b border-border px-6 py-3 flex items-center gap-4">
         <div className="flex-[2.5] h-3 w-24 bg-muted/80 animate-pulse rounded" />
         <div className="flex-[3] h-3 w-20 bg-muted/80 animate-pulse rounded" />
@@ -97,6 +98,7 @@ function TableSkeleton() {
           </div>
         </div>
       ))}
+      </div>
     </div>
   );
 }
@@ -138,8 +140,8 @@ export function CampaignTable() {
   return (
     <div>
       {/* Page header */}
-      <div className="flex items-start justify-between mb-5">
-        <div>
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">Campaigns</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {counts.needs_attention > 0 && (
@@ -152,16 +154,16 @@ export function CampaignTable() {
             {counts.active} active · {counts.planned} planned
           </p>
         </div>
-        <Button onClick={() => router.push("/campaigns/new")}>
+        <Button className="w-full sm:w-auto" onClick={() => router.push("/campaigns/new")}>
           <Plus className="h-4 w-4 mr-1.5" />
           New Campaign
         </Button>
       </div>
 
       {/* Filter + search row */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         {/* Pills */}
-        <div className="inline-flex gap-1">
+        <div className="flex flex-wrap gap-1">
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -182,19 +184,19 @@ export function CampaignTable() {
         </div>
 
         {/* Search + client filter */}
-        <div className="flex items-center gap-2">
-          <div className="relative">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <input
               type="text"
               placeholder="Search campaigns..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 w-64 rounded-lg border border-border bg-muted/50 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring/20 transition-colors"
+              className="h-9 w-full rounded-lg border border-border bg-muted/50 pl-9 pr-3 text-sm placeholder:text-muted-foreground transition-colors focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring/20 sm:w-64"
             />
           </div>
           <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-            <SelectTrigger className="w-40 h-9">
+            <SelectTrigger className="h-9 w-full sm:w-40">
               <SelectValue placeholder="All clients" />
             </SelectTrigger>
             <SelectContent>
@@ -216,11 +218,12 @@ export function CampaignTable() {
       {isLoading ? (
         <TableSkeleton />
       ) : filtered.length === 0 ? (
-        <div className="bg-background rounded-xl border border-border shadow-sm mt-4 flex items-center justify-center py-20 text-sm text-muted-foreground">
+        <div className="mt-4 flex items-center justify-center rounded-xl border border-border bg-background py-20 text-sm text-muted-foreground shadow-sm">
           No campaigns match your filters.
         </div>
       ) : (
-        <div className="bg-background rounded-xl border border-border shadow-sm overflow-hidden mt-4">
+        <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-background shadow-sm">
+          <div className="min-w-[820px]">
           {/* Header row */}
           <div className="bg-muted/50 border-b border-border px-6 py-3 flex items-center">
             <div className="flex-[2.5] text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -239,7 +242,7 @@ export function CampaignTable() {
             const isAtRisk = campaign.status === "at_risk";
             const isGenerating = loadingInsights.has(campaign.id);
             const m = campaign.latestMetric;
-            const statusKey = campaign.status as import("@/features/campaigns/types").CampaignStatus;
+            const statusKey = campaign.status as CampaignStatus;
             const accent = CAMPAIGN_STATUS_CONFIG[statusKey]?.accent ?? "bg-transparent";
 
             return (
@@ -335,6 +338,7 @@ export function CampaignTable() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
 

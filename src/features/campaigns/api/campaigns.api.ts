@@ -37,7 +37,7 @@ export async function createCampaign(data: CreateCampaignInput): Promise<Campaig
   });
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.message ?? "Failed to create campaign");
+    throw new Error(error.message ?? error.error ?? "Failed to create campaign");
   }
   return res.json();
 }
@@ -50,7 +50,7 @@ export async function updateCampaign(id: string, data: UpdateCampaignInput): Pro
   });
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.message ?? "Failed to update campaign");
+    throw new Error(error.message ?? error.error ?? "Failed to update campaign");
   }
   return res.json();
 }

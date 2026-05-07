@@ -4,12 +4,21 @@ import {
   getCampaignWithLatestMetric,
   findManyByWorkspace,
   getCampaignById,
+  getClientByIdInWorkspace,
   createCampaign,
   updateCampaign,
   deleteCampaign,
   createInsight,
+  upsertMetric,
+  getMetricsByCampaign,
+  getInsightsByCampaign,
 } from "@/server/campaigns/campaigns.repository";
-import { CreateCampaignInput, UpdateCampaignInput, CampaignStatus } from "@/features/campaigns/types";
+import type {
+  CampaignStatus,
+  CreateCampaignInput,
+  CreateMetricInput,
+  UpdateCampaignInput,
+} from "@/server/campaigns/campaigns.schemas";
 import { openai } from "@/lib/openai";
 
 const STATUS_ORDER: Record<string, number> = {
@@ -138,30 +147,65 @@ export async function generateQuickInsight(campaignId: string, workspaceId: stri
   return { insight: content };
 }
 
-export async function getCampaign(id: string, clerkUserId: string) {
-  const campaign = await getCampaignById(id, clerkUserId);
+export async function getCampaign(id: string, workspaceId: string) {
+  const campaign = await getCampaignById(id, workspaceId);
   if (!campaign) throw new Error("Campaign not found");
   return { campaign };
 }
 
-export async function addCampaign(data: CreateCampaignInput) {
+export async function addCampaign(workspaceId: string, data: CreateCampaignInput) {
   if (!data.name || data.name.trim() === "") throw new Error("Campaign name is required");
   if (!data.clientId) throw new Error("Client is required");
   if (!data.platform) throw new Error("Platform is required");
+  const client = await getClientByIdInWorkspace(data.clientId, workspaceId);
+  if (!client) throw new Error("Client not found");
   const campaign = await createCampaign(data);
   return { campaign };
 }
 
-export async function editCampaign(id: string, clerkUserId: string, data: UpdateCampaignInput) {
-  const existing = await getCampaignById(id, clerkUserId);
+export async function editCampaign(id: string, workspaceId: string, data: UpdateCampaignInput) {
+  const existing = await getCampaignById(id, workspaceId);
   if (!existing) throw new Error("Campaign not found");
-  const campaign = await updateCampaign(id, data);
+  if (data.clientId) {
+    const client = await getClientByIdInWorkspace(data.clientId, workspaceId);
+    if (!client) throw new Error("Client not found");
+  }
+  const campaign = await updateCampaign(id, workspaceId, data);
+  if (!campaign) throw new Error("Campaign not found");
   return { campaign };
 }
 
-export async function removeCampaign(id: string, clerkUserId: string) {
-  const existing = await getCampaignById(id, clerkUserId);
-  if (!existing) throw new Error("Campaign not found");
-  await deleteCampaign(id);
+export async function removeCampaign(id: string, workspaceId: string) {
+  const campaign = await deleteCampaign(id, workspaceId);
+  if (!campaign) throw new Error("Campaign not found");
   return { success: true };
+}
+
+export async function addMetric(
+  campaignId: string,
+  workspaceId: string,
+  data: CreateMetricInput
+) {
+  const campaign = await getCampaignById(campaignId, workspaceId);
+  if (!campaign) throw new Error("Campaign not found");
+
+  const metric = await upsertMetric(campaignId, {
+    ...data,
+    date: new Date(data.date),
+  });
+
+  return { metric };
+}
+
+export async function listMetrics(campaignId: string, workspaceId: string) {
+  const campaign = await getCampaignById(campaignId, workspaceId);
+  if (!campaign) throw new Error("Campaign not found");
+  return getMetricsByCampaign(campaignId, workspaceId);
+}
+
+export async function listInsights(campaignId: string, workspaceId: string) {
+  const campaign = await getCampaignById(campaignId, workspaceId);
+  if (!campaign) throw new Error("Campaign not found");
+  const insights = await getInsightsByCampaign(campaignId, workspaceId);
+  return { insights };
 }

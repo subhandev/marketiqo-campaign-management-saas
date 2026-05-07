@@ -7,8 +7,15 @@ import {
   addCampaign,
   editCampaign,
   removeCampaign,
+  addMetric,
+  listMetrics,
+  listInsights,
 } from "@/server/campaigns/campaigns.service";
-import { CreateCampaignInput, UpdateCampaignInput } from "@/features/campaigns/types";
+import {
+  createCampaignSchema,
+  createMetricSchema,
+  updateCampaignSchema,
+} from "@/server/campaigns/campaigns.schemas";
 
 export async function handleGetCampaignList(workspaceId: string) {
   try {
@@ -39,9 +46,9 @@ export async function handleGenerateQuickInsight(campaignId: string, workspaceId
   }
 }
 
-export async function handleGetCampaign(id: string, clerkUserId: string) {
+export async function handleGetCampaign(id: string, workspaceId: string) {
   try {
-    const data = await getCampaign(id, clerkUserId);
+    const data = await getCampaign(id, workspaceId);
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     if (error instanceof Error && error.message === "Campaign not found")
@@ -50,10 +57,10 @@ export async function handleGetCampaign(id: string, clerkUserId: string) {
   }
 }
 
-export async function handleCreateCampaign(req: NextRequest, clerkUserId: string) {
+export async function handleCreateCampaign(req: NextRequest, workspaceId: string) {
   try {
-    const body: CreateCampaignInput = await req.json();
-    const data = await addCampaign({ ...body });
+    const body = createCampaignSchema.parse(await req.json());
+    const data = await addCampaign(workspaceId, body);
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
     if (error instanceof Error)
@@ -62,10 +69,10 @@ export async function handleCreateCampaign(req: NextRequest, clerkUserId: string
   }
 }
 
-export async function handleUpdateCampaign(req: NextRequest, id: string, clerkUserId: string) {
+export async function handleUpdateCampaign(req: NextRequest, id: string, workspaceId: string) {
   try {
-    const body: UpdateCampaignInput = await req.json();
-    const data = await editCampaign(id, clerkUserId, body);
+    const body = updateCampaignSchema.parse(await req.json());
+    const data = await editCampaign(id, workspaceId, body);
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     if (error instanceof Error && error.message === "Campaign not found")
@@ -74,13 +81,53 @@ export async function handleUpdateCampaign(req: NextRequest, id: string, clerkUs
   }
 }
 
-export async function handleDeleteCampaign(id: string, clerkUserId: string) {
+export async function handleDeleteCampaign(id: string, workspaceId: string) {
   try {
-    const data = await removeCampaign(id, clerkUserId);
+    const data = await removeCampaign(id, workspaceId);
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     if (error instanceof Error && error.message === "Campaign not found")
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     return NextResponse.json({ error: "Failed to delete campaign" }, { status: 500 });
+  }
+}
+
+export async function handleCreateMetric(
+  req: NextRequest,
+  campaignId: string,
+  workspaceId: string
+) {
+  try {
+    const body = createMetricSchema.parse(await req.json());
+    const data = await addMetric(campaignId, workspaceId, body);
+    return NextResponse.json(data, { status: 201 });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Campaign not found")
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    if (error instanceof Error)
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ error: "Failed to save metric" }, { status: 500 });
+  }
+}
+
+export async function handleListMetrics(campaignId: string, workspaceId: string) {
+  try {
+    const data = await listMetrics(campaignId, workspaceId);
+    return NextResponse.json(data, { status: 200 });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Campaign not found")
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    return NextResponse.json({ error: "Failed to fetch metrics" }, { status: 500 });
+  }
+}
+
+export async function handleListInsights(campaignId: string, workspaceId: string) {
+  try {
+    const data = await listInsights(campaignId, workspaceId);
+    return NextResponse.json(data, { status: 200 });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Campaign not found")
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    return NextResponse.json({ error: "Failed to fetch insights" }, { status: 500 });
   }
 }

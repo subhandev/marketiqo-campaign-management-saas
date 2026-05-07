@@ -1,5 +1,9 @@
 import { prisma } from "@/server/db/client";
-import { CreateCampaignInput, UpdateCampaignInput } from "@/features/campaigns/types";
+import type {
+  CreateCampaignInput,
+  CreateMetricInput,
+  UpdateCampaignInput,
+} from "@/server/campaigns/campaigns.schemas";
 
 export async function getCampaignsByWorkspace(workspaceId: string) {
   return prisma.campaign.findMany({
@@ -104,11 +108,11 @@ export async function getCampaignWithLatestMetric(campaignId: string, workspaceI
   });
 }
 
-export async function getCampaignById(id: string, clerkUserId: string) {
+export async function getCampaignById(id: string, workspaceId: string) {
   return prisma.campaign.findFirst({
     where: {
       id,
-      client: { workspace: { user: { clerkUserId } } },
+      client: { workspaceId },
     },
     include: {
       client: {
@@ -123,6 +127,13 @@ export async function getCampaignById(id: string, clerkUserId: string) {
         take: 1,
       },
     },
+  });
+}
+
+export async function getClientByIdInWorkspace(clientId: string, workspaceId: string) {
+  return prisma.client.findFirst({
+    where: { id: clientId, workspaceId },
+    select: { id: true },
   });
 }
 
@@ -142,9 +153,13 @@ export async function createCampaign(data: CreateCampaignInput) {
   });
 }
 
-export async function updateCampaign(id: string, data: UpdateCampaignInput) {
-  return prisma.campaign.update({
-    where: { id },
+export async function updateCampaign(
+  id: string,
+  workspaceId: string,
+  data: UpdateCampaignInput
+) {
+  const updated = await prisma.campaign.updateMany({
+    where: { id, client: { workspaceId } },
     data: {
       ...data,
       startDate: data.startDate ? new Date(data.startDate) : undefined,
@@ -152,14 +167,65 @@ export async function updateCampaign(id: string, data: UpdateCampaignInput) {
       deadline: data.deadline ? new Date(data.deadline) : undefined,
     },
   });
+
+  if (updated.count === 0) return null;
+  return getCampaignById(id, workspaceId);
 }
 
-export async function deleteCampaign(id: string) {
-  return prisma.campaign.delete({ where: { id } });
+export async function deleteCampaign(id: string, workspaceId: string) {
+  return prisma.$transaction(async (tx) => {
+    const campaign = await tx.campaign.findFirst({
+      where: { id, client: { workspaceId } },
+      select: { id: true },
+    });
+
+    if (!campaign) return null;
+
+    await tx.metric.deleteMany({ where: { campaignId: id } });
+    await tx.insight.deleteMany({ where: { campaignId: id } });
+    return tx.campaign.delete({ where: { id } });
+  });
 }
 
 export async function createInsight(campaignId: string, data: { type: string; content: string; score?: number }) {
   return prisma.insight.create({
     data: { campaignId, ...data },
+  });
+}
+
+export async function upsertMetric(
+  campaignId: string,
+  data: Omit<CreateMetricInput, "date"> & { date: Date }
+) {
+  return prisma.metric.upsert({
+    where: { campaignId_date: { campaignId, date: data.date } },
+    update: {
+      impressions: data.impressions,
+      clicks: data.clicks,
+      spend: data.spend,
+      conversions: data.conversions,
+    },
+    create: {
+      campaignId,
+      date: data.date,
+      impressions: data.impressions,
+      clicks: data.clicks,
+      spend: data.spend,
+      conversions: data.conversions,
+    },
+  });
+}
+
+export async function getMetricsByCampaign(campaignId: string, workspaceId: string) {
+  return prisma.metric.findMany({
+    where: { campaignId, campaign: { client: { workspaceId } } },
+    orderBy: { date: "desc" },
+  });
+}
+
+export async function getInsightsByCampaign(campaignId: string, workspaceId: string) {
+  return prisma.insight.findMany({
+    where: { campaignId, campaign: { client: { workspaceId } } },
+    orderBy: { createdAt: "desc" },
   });
 }

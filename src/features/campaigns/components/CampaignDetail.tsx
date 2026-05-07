@@ -27,7 +27,7 @@ import { fetchMetrics, generateInsight, fetchInsights } from "@/features/campaig
 import { AddMetricModal } from "@/features/campaigns/components/AddMetricModal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { formatCurrency, formatCompact } from "@/shared/format/numbers";
-import { formatDateShort, formatDateMedium, formatRelativeTime } from "@/shared/format/dates";
+import { formatDateMedium, formatRelativeTime } from "@/shared/format/dates";
 import { getInitials, humanizeEnum } from "@/shared/format/strings";
 import { cn } from "@/lib/utils";
 
@@ -285,7 +285,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-5 sm:px-6 sm:py-6">
 
         {/* Back */}
         <button
@@ -301,8 +301,8 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
         {/* ── HEADER ────────────────────────────────────── */}
         <div className="space-y-2">
           {/* Breadcrumb + actions */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <div className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
                 {clientInitials}
               </div>
@@ -323,7 +323,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
             {/* Actions */}
             <div className="flex items-center gap-2">
               <button
-                onClick={() => router.push(`/campaigns/${campaign.id}?edit=true`)}
+                onClick={() => router.push(`/campaigns/${campaign.id}/edit`)}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 h-9 text-sm font-medium hover:bg-muted/50 transition-colors"
               >
                 <PencilIcon className="w-3.5 h-3.5" />
@@ -341,8 +341,8 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
           </div>
 
           {/* Title + status */}
-          <div className="flex items-center gap-3 mt-2">
-            <h1 className="text-2xl font-semibold tracking-tight">
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <h1 className="min-w-0 text-2xl font-semibold tracking-tight">
               {campaign.name}
             </h1>
             <StatusBadge status={campaign.status} />
@@ -358,8 +358,8 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
 
         {/* ── TIMELINE BAR ──────────────────────────────── */}
         {hasTimeline && endDate && (
-          <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-3.5">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3.5 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground sm:shrink-0">
               <CalendarIcon className="w-4 h-4" />
               <span>{formatDateMedium(campaign.startDate ?? campaign.createdAt)}</span>
               <span className="text-muted-foreground/50">→</span>
@@ -371,7 +371,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <span className="text-sm text-muted-foreground shrink-0">
+            <span className="text-sm text-muted-foreground sm:shrink-0">
               {progressPercent}% · {daysLeft} days left
             </span>
           </div>
@@ -379,7 +379,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
 
         {/* ── PERFORMANCE METRICS ROW ───────────────────── */}
         <div className="rounded-xl border border-border bg-card">
-          <div className="grid grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0 divide-border">
+          <div className="grid grid-cols-2 divide-x divide-y divide-border sm:grid-cols-3 lg:grid-cols-6 lg:divide-y-0">
             {metricCells.map((cell) => {
               const change = cell.change !== null ? parseFloat(cell.change) : null;
               const isPositive = change !== null && change >= 0;
@@ -416,7 +416,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
           {/* LEFT: AI Insights */}
           <div>
             {/* Insights header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-col gap-0.5">
                 <div className="flex items-center gap-2">
                   <SparklesIcon className="w-4 h-4 text-primary" />
@@ -431,7 +431,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
               <button
                 onClick={handleGenerateInsights}
                 disabled={generating}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors border border-border rounded-lg px-3 h-8 hover:bg-muted/50 disabled:opacity-50"
+                className="h-8 w-fit rounded-lg border border-border px-3 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-50"
               >
                 {generating ? "Generating…" : "Regenerate"}
               </button>
@@ -625,13 +625,13 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
 
         {/* ── PERFORMANCE TRENDS ────────────────────────── */}
         <div className="rounded-xl border border-border bg-card p-5">
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Performance Trends
             </h3>
 
             {/* Tab switcher */}
-            <div className="flex items-center rounded-lg border border-border overflow-hidden">
+            <div className="flex max-w-full items-center overflow-x-auto rounded-lg border border-border">
               {(["spend", "clicks", "impressions", "conversions"] as ChartTab[]).map(
                 (tab) => (
                   <button

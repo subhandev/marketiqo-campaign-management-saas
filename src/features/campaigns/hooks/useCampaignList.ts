@@ -11,10 +11,13 @@ export function useCampaignList() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function load() {
       try {
         setIsLoading(true);
         const data = await getCampaigns();
+        if (cancelled) return;
         setCampaigns(data);
 
         const stale = data.filter((c) => {
@@ -31,6 +34,7 @@ export function useCampaignList() {
             stale.map(async (c) => {
               try {
                 const result = await generateInsight(c.id);
+                if (cancelled) return;
                 setCampaigns((prev) =>
                   prev.map((campaign) =>
                     campaign.id === c.id
@@ -48,6 +52,7 @@ export function useCampaignList() {
               } catch {
                 // silently ignore — do not break UI
               } finally {
+                if (cancelled) return;
                 setLoadingInsights((prev) => {
                   const next = new Set(prev);
                   next.delete(c.id);
@@ -60,11 +65,14 @@ export function useCampaignList() {
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load campaigns");
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     }
 
     load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const counts = useMemo(
