@@ -8,6 +8,7 @@ interface ConfirmModalProps {
   description: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  loadingLabel?: string;
   loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -19,6 +20,7 @@ export function ConfirmModal({
   description,
   confirmLabel = "Delete",
   cancelLabel = "Cancel",
+  loadingLabel = "Deleting...",
   loading = false,
   onConfirm,
   onCancel,
@@ -57,7 +59,7 @@ export function ConfirmModal({
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? "Deleting..." : confirmLabel}
+            {loading ? loadingLabel : confirmLabel}
           </Button>
         </div>
       </div>

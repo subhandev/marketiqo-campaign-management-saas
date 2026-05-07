@@ -1,0 +1,34 @@
+---
+description: Enforce Marketiqo backend layering and frontend feature boundaries
+alwaysApply: true
+---
+
+# Marketiqo Architecture
+
+## Backend
+
+- Keep server domains in the strict chain: API route -> handler -> service -> repository -> Prisma.
+- API routes in `src/app/api/**/route.ts` should stay thin: authenticate with Clerk, parse route params/request bodies when needed, resolve workspace context, call a handler, and return the handler response.
+- Do not add new direct Prisma calls in API routes. Existing direct-Prisma routes are legacy shape; when changing them substantively, migrate them toward handler -> service -> repository.
+- Handlers in `src/server/<domain>/*.handler.ts` convert service results/errors into HTTP responses or `{ status, body }`. They should not contain Prisma queries or business rules.
+- Services in `src/server/<domain>/*.service.ts` own business rules, validation, response shaping, orchestration, AI calls, and cross-repository decisions.
+- Repositories in `src/server/<domain>/*.repository.ts` own Prisma queries only. Keep them persistence-focused and avoid product/business branching there.
+- Shared backend concerns belong in focused `src/server/<shared-domain>/` modules, such as `src/server/workspace/resolve-workspace.ts` for workspace selection.
+- Use the Prisma singleton from `src/server/db/client.ts`; do not instantiate `PrismaClient` elsewhere.
+- For workspace-scoped domains, list/read operations should resolve the active workspace before entering domain handlers, and write operations should intentionally resolve the real workspace when demo data exists.
+- Keep server code independent from React components. If server code needs shared TypeScript types, prefer extracting stable domain types instead of importing component-specific details.
+
+## Frontend
+
+- Use Next.js App Router for routing/layouts in `src/app`. Route files should compose feature components and avoid owning complex UI behavior.
+- Keep `src/app/(dashboard)/**/page.tsx` thin: page-level metadata, auth/server loading when needed, and feature composition only.
+- Frontend domain code belongs in `src/features/<domain>/`.
+- Feature modules own their local `components/`, `hooks/`, `api/`, `schemas`, `types`, `utils`, and `index.ts` barrel when those concepts exist.
+- Feature hooks should call feature API wrappers; API wrappers should call `/api/**` routes. Avoid scattering raw `fetch()` calls across unrelated components.
+- App shell concerns belong in `src/features/app-shell/`, including sidebar/header layout state and navigation chrome.
+- Dashboard-specific UI should live in a dashboard feature module if it grows beyond a thin page composition.
+- Build responsive UI by default. Use mobile-first Tailwind classes, then add `sm:`, `md:`, `lg:`, and `xl:` breakpoints for larger layouts.
+- Preserve the responsive app shell: sidebar should behave as a mobile drawer and desktop collapsible rail; page content should scroll inside the main area without horizontal overflow.
+- Tables, dense cards, and multi-column dashboards must have small-screen behavior such as horizontal scroll, stacked cards, or reduced columns.
+- Avoid desktop-only assumptions for actions, filters, and navigation. Critical actions should remain reachable on mobile.
+- Prefer existing shadcn/ui primitives in `src/components/ui/` and shared format helpers in `src/shared/` before adding new utilities.
