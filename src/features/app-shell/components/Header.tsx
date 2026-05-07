@@ -22,15 +22,16 @@ export function Header({
   const router = useRouter();
 
   const fullName = user?.fullName ?? user?.username ?? "User";
+  const displayName = user?.firstName ?? user?.username ?? "User";
   const initials = getInitials(fullName);
 
   return (
     <header
-      className="h-14 px-6 flex items-center justify-between sticky top-0 z-10 border-b border-border backdrop-blur-sm"
+      className="h-14 px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-10 border-b border-border backdrop-blur-sm"
       style={{ background: "hsl(var(--background) / 0.85)" }}
     >
       {/* Left */}
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         <button
           type="button"
           onClick={onMobileMenuClick}
@@ -40,31 +41,31 @@ export function Header({
           <PanelLeftOpen size={16} />
         </button>
 
-        <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 h-10 w-full max-w-[20rem] focus-within:bg-background focus-within:ring-1 focus-within:ring-ring transition-colors">
-        <Search size={14} className="text-muted-foreground shrink-0" />
-        <input
-          placeholder="Search..."
-          className="bg-transparent text-sm outline-none flex-1"
-        />
+        <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 h-10 w-full min-w-0 md:max-w-[20rem] focus-within:bg-background focus-within:ring-1 focus-within:ring-ring transition-colors">
+          <Search size={14} className="text-muted-foreground shrink-0" />
+          <input
+            placeholder="Search..."
+            className="bg-transparent text-sm outline-none flex-1 min-w-0"
+          />
         </div>
       </div>
 
       {/* Right */}
-      <div className="flex items-center gap-2">
-        <button className="w-8 h-8 flex items-center justify-center">
+      <div className="flex items-center gap-2 shrink-0">
+        <button className="hidden sm:flex w-8 h-8 items-center justify-center">
           <CircleHelp size={16} />
         </button>
 
-        <div className="relative">
+        <div className="hidden sm:block relative">
           <Bell size={16} />
         </div>
 
-        <div className="w-px h-6 bg-border mx-1" />
+        <div className="hidden sm:block w-px h-6 bg-border mx-1" />
 
         {/* Profile dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2.5 hover:bg-muted px-2 py-1 rounded-lg">
+            <button className="flex items-center gap-2 hover:bg-muted px-2 py-1 rounded-lg max-w-[11rem]">
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold"
                 style={{
@@ -74,8 +75,8 @@ export function Header({
               >
                 {initials}
               </div>
-              <div className="flex flex-col text-left">
-                <span className="text-sm font-medium">{fullName}</span>
+              <div className="hidden sm:flex flex-col text-left min-w-0">
+                <span className="text-sm font-medium truncate">{displayName}</span>
                 <span className="text-[10px] text-muted-foreground">Admin</span>
               </div>
             </button>
