@@ -19,6 +19,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AddMetricModal } from "@/features/campaigns/components/AddMetricModal";
 import { fetchInsights, fetchMetrics, generateInsight } from "@/features/campaigns/api/campaigns.api";
 import { useCampaignMutations } from "@/features/campaigns/hooks/useCampaigns";
@@ -484,15 +490,26 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
                 </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="bg-card/80"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  aria-label="Open campaign actions"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="bg-card/80"
+                      aria-label="Open campaign actions"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => setShowDeleteConfirm(true)}
+                    >
+                      Delete Campaign
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
