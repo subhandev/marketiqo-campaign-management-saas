@@ -8,13 +8,13 @@ import {
   editClient,
   removeClient,
 } from "@/server/clients/clients.service";
-import { CreateClientInput, UpdateClientInput } from "@/features/clients/types";
+import { createClientSchema } from "@/features/clients/schemas";
 
-export async function handleListClients(clerkUserId: string) {
+export async function handleListClients(workspaceId: string) {
   try {
-    const data = await listClients(clerkUserId);
+    const data = await listClients(workspaceId);
     return NextResponse.json(data, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch clients" },
       { status: 500 }
@@ -22,9 +22,9 @@ export async function handleListClients(clerkUserId: string) {
   }
 }
 
-export async function handleGetClient(id: string, clerkUserId: string) {
+export async function handleGetClient(id: string, workspaceId: string) {
   try {
-    const data = await getClient(id, clerkUserId);
+    const data = await getClient(id, workspaceId);
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     if (error instanceof Error && error.message === "Client not found") {
@@ -39,21 +39,15 @@ export async function handleGetClient(id: string, clerkUserId: string) {
 
 export async function handleCreateClient(
   req: NextRequest,
-  clerkUserId: string
+  workspaceId: string
 ) {
   try {
-    const body: CreateClientInput = await req.json();
-    const data = await addClient(clerkUserId, body);
+    const body = createClientSchema.parse(await req.json());
+    const data = await addClient(workspaceId, body);
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message === "Client name is required"
-    ) {
-      return NextResponse.json(
-        { error: "Client name is required" },
-        { status: 400 }
-      );
+    if (error instanceof Error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     return NextResponse.json(
       { error: "Failed to create client" },
@@ -65,26 +59,26 @@ export async function handleCreateClient(
 export async function handleUpdateClient(
   req: NextRequest,
   id: string,
-  clerkUserId: string
+  workspaceId: string
 ) {
   try {
-    const body: UpdateClientInput = await req.json();
-    const data = await editClient(id, clerkUserId, body);
+    const body = createClientSchema.parse(await req.json());
+    const data = await editClient(id, workspaceId, body);
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     if (error instanceof Error && error.message === "Client not found") {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
-    return NextResponse.json(
-      { error: "Failed to update client" },
-      { status: 500 }
-    );
+    if (error instanceof Error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Failed to update client" }, { status: 500 });
   }
 }
 
-export async function handleDeleteClient(id: string, clerkUserId: string) {
+export async function handleDeleteClient(id: string, workspaceId: string) {
   try {
-    const data = await removeClient(id, clerkUserId);
+    const data = await removeClient(id, workspaceId);
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     if (error instanceof Error && error.message === "Client not found") {

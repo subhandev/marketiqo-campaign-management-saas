@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { Info } from "lucide-react";
 import { DemoSeedOverlay } from "./DemoSeedOverlay";
 
-type DemoState = "idle" | "seeding" | "completing" | "ready" | "cleared";
+type DemoState = "idle" | "seeding" | "completing" | "ready";
 
 export function DemoOnboarding({
   initialState,
@@ -14,7 +16,6 @@ export function DemoOnboarding({
     initialState === "needs_seed" ? "seeding" :
     initialState === "seeded"     ? "ready"   : "idle"
   );
-  const [clearing, setClearing] = useState(false);
   const overlayCompleteRef = useRef<(() => void) | null>(null);
 
   // Fire seed + poll for completion
@@ -50,15 +51,9 @@ export function DemoOnboarding({
       stopped = true;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, []);
+  }, [state]);
 
-  function handleClear() {
-    setClearing(true);
-    fetch("/api/demo/clear", { method: "DELETE" }).catch(() => {});
-    window.location.href = "/dashboard";
-  }
-
-  if (state === "idle" || state === "cleared") return null;
+  if (state === "idle") return null;
 
   if (state === "seeding" || state === "completing") {
     return (
@@ -71,18 +66,22 @@ export function DemoOnboarding({
 
   // state === "ready"
   return (
-    <div className="mb-6 flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm">
-      <div className="flex items-center gap-2 text-blue-700">
-        <span>✦</span>
-        <span>You&apos;re exploring Marketiqo with demo data. Ready to switch to your real workspace?</span>
+    <div className="mb-3 flex w-full flex-col gap-2 rounded-lg border border-[hsl(var(--info)/0.22)] bg-[hsl(var(--info-soft))] p-2 text-sm shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+        <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md bg-[hsl(var(--card)/0.78)] px-2 text-xs font-medium text-[hsl(var(--info))] ring-1 ring-[hsl(var(--info)/0.16)]">
+          <Info size={12} />
+          Demo mode
+        </span>
+        <p className="min-w-0 text-[hsl(var(--foreground))]">
+          You&apos;re viewing sample data. Reset it from Settings when ready.
+        </p>
       </div>
-      <button
-        onClick={handleClear}
-        disabled={clearing}
-        className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
+      <Link
+        href="/settings"
+        className="inline-flex h-7 w-fit shrink-0 cursor-pointer items-center justify-center rounded-md bg-[hsl(var(--card)/0.78)] px-2.5 text-xs font-medium text-[hsl(var(--info))] ring-1 ring-[hsl(var(--info)/0.16)] transition-colors hover:bg-[hsl(var(--card))]"
       >
-        {clearing ? "Clearing…" : "Clear demo data & get started"}
-      </button>
+        Manage
+      </Link>
     </div>
   );
 }

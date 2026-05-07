@@ -34,7 +34,11 @@ export function useCampaigns() {
   }, []);
 
   useEffect(() => {
-    load();
+    const timeout = setTimeout(() => {
+      load();
+    }, 0);
+
+    return () => clearTimeout(timeout);
   }, [load]);
   return { campaigns, total, loading, error, refresh: load };
 }
@@ -58,7 +62,11 @@ export function useCampaign(id: string) {
   }, [id]);
 
   useEffect(() => {
-    load();
+    const timeout = setTimeout(() => {
+      load();
+    }, 0);
+
+    return () => clearTimeout(timeout);
   }, [load]);
   return { campaign, loading, error, refresh: load };
 }

@@ -46,7 +46,7 @@ const manageNav: NavItem[] = [
   { label: "Team", icon: UsersRound, href: "/team", disabled: true },
   { label: "Documents", icon: FileText, href: "/documents", disabled: true },
   { label: "Integrations", icon: Plug, href: "/integrations", disabled: true },
-  { label: "Settings", icon: Settings2, href: "/settings", disabled: true },
+  { label: "Settings", icon: Settings2, href: "/settings" },
 ];
 
 interface SidebarProps {
@@ -248,15 +248,35 @@ export function Sidebar({
         <div className="flex flex-col gap-1.5">
           {manageNav.map((item) => {
             const Icon = item.icon;
+            const active = isActive(item.href);
+
+            if (item.disabled) {
+              return (
+                <div key={item.label} className={navItemClass(false, true)}>
+                  <Icon size={15} className="shrink-0 opacity-60" />
+                  {!collapsed && (
+                    <>
+                      <span className="truncate">{item.label}</span>
+                    </>
+                  )}
+                </div>
+              );
+            }
+
             return (
-              <div key={item.label} className={navItemClass(false, true)}>
-                <Icon size={15} className="shrink-0 opacity-60" />
+              <Link
+                key={item.label}
+                href={item.href}
+                className={navItemClass(active)}
+                onClick={() => onMobileClose?.()}
+              >
+                <Icon size={15} className="shrink-0" />
                 {!collapsed && (
                   <>
                     <span className="truncate">{item.label}</span>
                   </>
                 )}
-              </div>
+              </Link>
             );
           })}
         </div>

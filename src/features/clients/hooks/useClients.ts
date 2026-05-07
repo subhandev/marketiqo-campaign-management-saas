@@ -10,6 +10,7 @@ import {
 } from "@/features/clients/api/clients.api";
 import {
   Client,
+  ClientInsight,
   CreateClientInput,
   UpdateClientInput,
 } from "@/features/clients/types";
@@ -37,7 +38,11 @@ export function useClients() {
   }, []);
 
   useEffect(() => {
-    load();
+    const timeout = setTimeout(() => {
+      void load();
+    }, 0);
+
+    return () => clearTimeout(timeout);
   }, [load]);
 
   return { clients, total, loading, error, refresh: load };
@@ -47,6 +52,7 @@ export function useClients() {
 
 export function useClient(id: string) {
   const [client, setClient] = useState<Client | null>(null);
+  const [insights, setInsights] = useState<ClientInsight[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +62,7 @@ export function useClient(id: string) {
       setError(null);
       const data = await fetchClient(id);
       setClient(data.client);
+      setInsights(data.insights ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -64,10 +71,14 @@ export function useClient(id: string) {
   }, [id]);
 
   useEffect(() => {
-    load();
+    const timeout = setTimeout(() => {
+      void load();
+    }, 0);
+
+    return () => clearTimeout(timeout);
   }, [load]);
 
-  return { client, loading, error, refresh: load };
+  return { client, insights, loading, error, refresh: load };
 }
 
 // ── Mutations Hook ─────────────────────────────────────────

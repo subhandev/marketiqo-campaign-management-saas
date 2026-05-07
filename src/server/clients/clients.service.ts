@@ -7,7 +7,7 @@ import {
   updateClient,
   deleteClient,
 } from "@/server/clients/clients.repository";
-import { CreateClientInput, UpdateClientInput } from "@/features/clients/types";
+import { CreateClientInput } from "@/features/clients/types";
 
 export async function listClients(workspaceId: string) {
   const clients = await getClientsByWorkspace(workspaceId);
@@ -17,14 +17,16 @@ export async function listClients(workspaceId: string) {
   };
 }
 
-export async function getClient(id: string, clerkUserId: string) {
-  const client = await getClientById(id, clerkUserId);
+export async function getClient(id: string, workspaceId: string) {
+  const client = await getClientById(id, workspaceId);
 
   if (!client) {
     throw new Error("Client not found");
   }
 
-  return { client };
+  const insights = client.campaigns.flatMap((campaign) => campaign.insights);
+
+  return { client, insights };
 }
 
 export async function addClient(
@@ -41,26 +43,16 @@ export async function addClient(
 
 export async function editClient(
   id: string,
-  clerkUserId: string,
-  data: UpdateClientInput
+  workspaceId: string,
+  data: CreateClientInput
 ) {
-  const existing = await getClientById(id, clerkUserId);
-
-  if (!existing) {
-    throw new Error("Client not found");
-  }
-
-  const client = await updateClient(id, existing.workspaceId, data);
+  const client = await updateClient(id, workspaceId, data);
+  if (!client) throw new Error("Client not found");
   return { client };
 }
 
-export async function removeClient(id: string, clerkUserId: string) {
-  const existing = await getClientById(id, clerkUserId);
-
-  if (!existing) {
-    throw new Error("Client not found");
-  }
-
-  await deleteClient(id, existing.workspaceId);
+export async function removeClient(id: string, workspaceId: string) {
+  const deleted = await deleteClient(id, workspaceId);
+  if (!deleted) throw new Error("Client not found");
   return { success: true };
 }

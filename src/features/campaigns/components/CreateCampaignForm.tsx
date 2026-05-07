@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
 import { useClients } from "@/features/clients/hooks/useClients";
 import { useCampaignMutations } from "@/features/campaigns/hooks/useCampaigns";
 import { createCampaignSchema, CreateCampaignInput } from "@/features/campaigns/schemas";
+import { Campaign, CampaignStatus } from "@/features/campaigns/types";
 import { cn } from "@/lib/utils";
 
 const PLATFORMS = [
@@ -50,43 +51,57 @@ const statusStyles = {
   archived:  "bg-zinc-100 text-zinc-400 border-zinc-200",
 };
 
-export function CreateCampaignForm() {
+type CreateCampaignFormProps = {
+  campaign?: Campaign;
+  mode?: "create" | "edit";
+};
+
+export function CreateCampaignForm({
+  campaign,
+  mode = "create",
+}: CreateCampaignFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedClientId = searchParams.get("clientId") ?? "";
+  const isEditing = mode === "edit" && campaign;
 
   const { clients } = useClients();
-  const { create, loading, error } = useCampaignMutations();
+  const { create, update, loading, error } = useCampaignMutations();
 
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     formState: { errors },
   } = useForm<CreateCampaignInput>({
     resolver: zodResolver(createCampaignSchema),
     defaultValues: {
-      name: "",
-      clientId: preselectedClientId,
-      description: "",
-      platform: "",
-      status: "planned",
-      goal: "",
-      startDate: "",
-      endDate: "",
-      deadline: "",
+      name: campaign?.name ?? "",
+      clientId: campaign?.clientId ?? preselectedClientId,
+      description: campaign?.description ?? "",
+      platform: campaign?.platform ?? "",
+      status: campaign?.status ?? "planned",
+      goal: campaign?.goal ?? "",
+      startDate: campaign?.startDate?.slice(0, 10) ?? "",
+      endDate: campaign?.endDate?.slice(0, 10) ?? "",
+      deadline: campaign?.deadline?.slice(0, 10) ?? "",
     },
   });
 
-  const watched = watch();
+  const watched = useWatch({ control });
 
   const selectedClient = clients.find((c) => c.id === watched.clientId);
 
   const onSubmit = async (data: CreateCampaignInput) => {
     try {
-      await create(data);
-      router.push("/campaigns");
+      if (isEditing) {
+        await update(campaign.id, data);
+        router.push(`/campaigns/${campaign.id}`);
+      } else {
+        await create(data);
+        router.push("/campaigns");
+      }
     } catch {
       // error handled in hook
     }
@@ -100,7 +115,7 @@ export function CreateCampaignForm() {
         <div className="space-y-6 min-w-0">
 
           {/* Name + Client */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">
                 Campaign Name <span className="text-destructive normal-case tracking-normal">*</span>
@@ -143,7 +158,7 @@ export function CreateCampaignForm() {
           </div>
 
           {/* Platform + Status */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>
                 Platform <span className="text-destructive normal-case tracking-normal">*</span>
@@ -175,7 +190,7 @@ export function CreateCampaignForm() {
               <Select
                 value={watched.status}
                 onValueChange={(val) =>
-                  setValue("status", val as any, { shouldValidate: true })
+                  setValue("status", val as CampaignStatus, { shouldValidate: true })
                 }
               >
                 <SelectTrigger>
@@ -215,7 +230,7 @@ export function CreateCampaignForm() {
           {/* Timeline */}
           <div className="space-y-2">
             <Label>Timeline</Label>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
                 <p className="text-xs text-muted-foreground">Start Date</p>
                 <Input type="date" {...register("startDate")} />
@@ -257,13 +272,14 @@ export function CreateCampaignForm() {
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           {/* Actions */}
-          <div className="flex items-center gap-3 pt-4">
+          <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:items-center">
             <Button
               type="button"
               variant="ghost"
               size="lg"
               onClick={() => router.back()}
               disabled={loading}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
@@ -271,8 +287,15 @@ export function CreateCampaignForm() {
               type="submit"
               size="lg"
               disabled={loading || !watched.name?.trim() || !watched.clientId || !watched.platform}
+              className="w-full sm:w-auto"
             >
-              {loading ? "Creating..." : "Create Campaign"}
+              {loading
+                ? isEditing
+                  ? "Saving..."
+                  : "Creating..."
+                : isEditing
+                ? "Save Campaign"
+                : "Create Campaign"}
             </Button>
           </div>
         </div>

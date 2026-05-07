@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const STEPS = [
   { label: "Creating clients and campaign structures" },
@@ -21,11 +21,20 @@ export function DemoSeedOverlay({ onComplete, onReadyToComplete }: DemoSeedOverl
   const [visible, setVisible] = useState(true);
   const [mounted, setMounted] = useState(true);
 
+  const triggerComplete = useCallback(() => {
+    setCompleting(true);
+    setProgress(100);
+    setTimeout(() => {
+      setVisible(false);
+      setTimeout(() => setMounted(false), 450);
+      setTimeout(() => { onComplete(); }, 500);
+    }, 600);
+  }, [onComplete]);
+
   // Expose triggerComplete to parent on mount
   useEffect(() => {
     onReadyToComplete(triggerComplete);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [onReadyToComplete, triggerComplete]);
 
   // Fake step 0 → 1 → 2 progression
   useEffect(() => {
@@ -50,16 +59,6 @@ export function DemoSeedOverlay({ onComplete, onReadyToComplete }: DemoSeedOverl
     }, 1000);
     return () => clearInterval(interval);
   }, []);
-
-  function triggerComplete() {
-    setCompleting(true);
-    setProgress(100);
-    setTimeout(() => {
-      setVisible(false);
-      setTimeout(() => setMounted(false), 450);
-      setTimeout(() => { onComplete(); }, 500);
-    }, 600);
-  }
 
   if (!mounted) return null;
 
