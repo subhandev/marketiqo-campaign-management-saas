@@ -7,7 +7,12 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { createMetricSchema, CreateMetricInput } from "../schemas";
 import { useMetricMutations } from "../hooks/useMetricMutations";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -49,18 +54,25 @@ export function AddMetricModal({ open, onClose, campaignId, onSuccess }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+      <DialogContent
+        showCloseButton={false}
+        className="sm:max-w-md p-0 gap-0 overflow-hidden"
+      >
         {/* Header */}
         <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-border">
           <div className="space-y-0.5">
-            <h2 className="text-base font-semibold tracking-tight">Add Metrics</h2>
-            <p className="text-sm text-muted-foreground">
+            <DialogTitle className="text-base font-semibold tracking-tight">
+              Add Metrics
+            </DialogTitle>
+            <DialogDescription>
               Record performance data for a specific date.
-            </p>
+            </DialogDescription>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors mt-0.5"
+            className="mt-0.5 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Close add metrics dialog"
           >
             <X className="h-4 w-4" />
           </button>
@@ -80,7 +92,7 @@ export function AddMetricModal({ open, onClose, campaignId, onSuccess }: Props) 
           </div>
 
           {/* 2-col grid: Impressions + Clicks */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-xs uppercase tracking-wide font-medium text-muted-foreground">
                 Impressions
@@ -108,7 +120,7 @@ export function AddMetricModal({ open, onClose, campaignId, onSuccess }: Props) 
           </div>
 
           {/* 2-col grid: Spend + Conversions */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-xs uppercase tracking-wide font-medium text-muted-foreground">
                 Spend
@@ -152,11 +164,17 @@ export function AddMetricModal({ open, onClose, campaignId, onSuccess }: Props) 
           )}
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 pt-1">
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+          <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:items-center sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
               {isSubmitting ? "Saving…" : "Save Metrics"}
             </Button>
           </div>

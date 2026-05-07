@@ -1,110 +1,253 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeftIcon,
-  PencilIcon,
-  EllipsisHorizontalIcon,
-  CalendarIcon,
-  SparklesIcon,
-  ExclamationTriangleIcon,
-  ArrowTrendingDownIcon,
-  LightBulbIcon,
-} from "@heroicons/react/24/outline";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import { Campaign, CampaignStatus, Metric, Insight } from "@/features/campaigns/types";
-import { useCampaignMutations } from "@/features/campaigns/hooks/useCampaigns";
-import { fetchMetrics, generateInsight, fetchInsights } from "@/features/campaigns/api/campaigns.api";
-import { AddMetricModal } from "@/features/campaigns/components/AddMetricModal";
+  AlertTriangle,
+  ArrowDownRight,
+  ArrowLeft,
+  ArrowUpRight,
+  CalendarDays,
+  Lightbulb,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Sparkles,
+  Target,
+  TrendingDown,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-import { formatCurrency, formatCompact } from "@/shared/format/numbers";
+import { AddMetricModal } from "@/features/campaigns/components/AddMetricModal";
+import { fetchInsights, fetchMetrics, generateInsight } from "@/features/campaigns/api/campaigns.api";
+import { useCampaignMutations } from "@/features/campaigns/hooks/useCampaigns";
+import { Campaign, CampaignStatus, Insight, Metric } from "@/features/campaigns/types";
 import { formatDateMedium, formatRelativeTime } from "@/shared/format/dates";
+import { formatCompact, formatCurrency } from "@/shared/format/numbers";
 import { getInitials, humanizeEnum } from "@/shared/format/strings";
 import { cn } from "@/lib/utils";
 
-// ── Helpers ────────────────────────────────────────────────
+type ChartTab = "spend" | "clicks" | "impressions" | "conversions";
 
-function formatGoal(goal: string | null | undefined): string {
-  if (!goal) return "—";
-  return humanizeEnum(goal);
+interface CampaignDetailProps {
+  campaign: Campaign;
 }
 
-function pctChange(recent: number, prev: number): string | null {
-  if (prev === 0) return null;
-  return ((recent - prev) / prev * 100).toFixed(1);
-}
-
-// ── StatusBadge ────────────────────────────────────────────
+const CampaignTrendChart = dynamic(
+  () =>
+    import("@/features/campaigns/components/CampaignTrendChart").then(
+      (mod) => mod.CampaignTrendChart
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-64 w-full animate-pulse rounded-xl border border-border bg-muted/30" />
+    ),
+  }
+);
 
 const STATUS_STYLES: Record<CampaignStatus, string> = {
-  planned: "bg-blue-50 text-blue-700 border-blue-200",
-  active: "bg-green-50 text-green-700 border-green-200",
-  at_risk: "bg-orange-50 text-orange-700 border-orange-200",
-  completed: "bg-zinc-100 text-zinc-500 border-zinc-200",
-  archived: "bg-zinc-100 text-zinc-400 border-zinc-200",
+  planned: "border-blue-200 bg-blue-50 text-blue-700",
+  active: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  at_risk: "border-rose-200 bg-rose-50 text-rose-700",
+  completed: "border-zinc-200 bg-zinc-50 text-zinc-500",
+  archived: "border-zinc-200 bg-zinc-50 text-zinc-500",
+};
+
+const STATUS_DOTS: Record<CampaignStatus, string> = {
+  planned: "bg-blue-400",
+  active: "bg-emerald-500",
+  at_risk: "bg-rose-500",
+  completed: "bg-zinc-400",
+  archived: "bg-zinc-400",
 };
 
 const STATUS_LABELS: Record<CampaignStatus, string> = {
   planned: "Planned",
   active: "Active",
-  at_risk: "At Risk",
+  at_risk: "At risk",
   completed: "Completed",
   archived: "Archived",
 };
 
-function StatusBadge({ status }: { status: CampaignStatus }) {
+const PLATFORM_STYLES: Record<string, string> = {
+  GOOGLE: "border-amber-200 bg-amber-50 text-amber-700",
+  "GOOGLE ADS": "border-amber-200 bg-amber-50 text-amber-700",
+  META: "border-indigo-200 bg-indigo-50 text-indigo-700",
+  "META ADS": "border-indigo-200 bg-indigo-50 text-indigo-700",
+  LINKEDIN: "border-blue-200 bg-blue-50 text-blue-700",
+  "LINKEDIN ADS": "border-blue-200 bg-blue-50 text-blue-700",
+  YOUTUBE: "border-red-200 bg-red-50 text-red-700",
+  "YOUTUBE ADS": "border-red-200 bg-red-50 text-red-700",
+  TIKTOK: "border-pink-200 bg-pink-50 text-pink-700",
+  "TIKTOK ADS": "border-pink-200 bg-pink-50 text-pink-700",
+  "TWITTER/X": "border-zinc-200 bg-zinc-100 text-zinc-700",
+  X: "border-zinc-200 bg-zinc-100 text-zinc-700",
+  EMAIL: "border-violet-200 bg-violet-50 text-violet-700",
+  SEO: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  OTHER: "border-slate-200 bg-slate-100 text-slate-600",
+};
+
+function pctChange(recent: number, previous: number) {
+  if (previous <= 0) return null;
+  return (recent - previous) / previous;
+}
+
+function formatGoal(goal: string | null | undefined) {
+  if (!goal) return "-";
+  return humanizeEnum(goal);
+}
+
+function StatusPill({ status }: { status: CampaignStatus }) {
   return (
     <span
       className={cn(
-        "text-xs px-2.5 py-1 rounded-full font-medium border",
+        "inline-flex h-6 items-center rounded-full border px-2.5 text-xs font-semibold",
         STATUS_STYLES[status]
       )}
     >
+      <span className={cn("mr-1.5 h-1.5 w-1.5 rounded-full", STATUS_DOTS[status])} />
       {STATUS_LABELS[status]}
     </span>
   );
 }
 
-// ── Chart tooltip ──────────────────────────────────────────
+function PlatformPill({ platform }: { platform: string }) {
+  const key = platform.toUpperCase();
+  const style = PLATFORM_STYLES[key] ?? "border-slate-200 bg-slate-100 text-slate-600";
 
-type ChartTab = "spend" | "clicks" | "impressions" | "conversions";
-
-function ChartTooltip({
-  active,
-  payload,
-  label,
-  tab,
-}: {
-  active?: boolean;
-  payload?: { value: number }[];
-  label?: string;
-  tab: ChartTab;
-}) {
-  if (!active || !payload?.length) return null;
-  const val = payload[0].value;
   return (
-    <div className="bg-card border border-border rounded-lg shadow-sm px-3 py-2">
-      <p className="text-xs text-muted-foreground mb-1">{label}</p>
-      <p className="text-sm font-semibold">
-        {tab === "spend" ? formatCurrency(val) : formatCompact(val)}
-      </p>
+    <span
+      className={cn(
+        "rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+        style
+      )}
+    >
+      {key}
+    </span>
+  );
+}
+
+function MetricChange({ value }: { value: number | null }) {
+  if (value === null) return null;
+
+  const isPositive = value >= 0;
+  const Icon = isPositive ? ArrowUpRight : ArrowDownRight;
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-0.5 text-xs font-medium",
+        isPositive ? "text-emerald-600" : "text-rose-600"
+      )}
+    >
+      <Icon className="h-3 w-3" />
+      {Math.abs(value * 100).toFixed(0)}%
+    </span>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  change,
+  helper,
+}: {
+  label: string;
+  value: string;
+  change: number | null;
+  helper: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </p>
+          <div className="mt-1 flex flex-wrap items-baseline gap-2">
+            <p className="text-2xl font-semibold tracking-tight">{value}</p>
+            <MetricChange value={change} />
+          </div>
+        </div>
+        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+          {helper}
+        </span>
+      </div>
     </div>
   );
 }
 
-// ── Main Component ─────────────────────────────────────────
+function InsightCard({ insight }: { insight: Insight }) {
+  const type = insight.type;
+  const colonIdx = insight.content.indexOf(":");
+  const title = colonIdx > -1 ? insight.content.slice(0, colonIdx) : insight.content;
+  const body = colonIdx > -1 ? insight.content.slice(colonIdx + 1).trim() : "";
 
-interface CampaignDetailProps {
-  campaign: Campaign;
+  const tone =
+    type === "risk"
+      ? {
+          label: "RISK",
+          badge: "border-orange-200 bg-orange-50 text-orange-700",
+          icon: "border-orange-200 bg-orange-50 text-orange-600",
+          Icon: AlertTriangle,
+        }
+      : type === "performance"
+      ? {
+          label: "TREND",
+          badge: "border-purple-200 bg-purple-50 text-purple-700",
+          icon: "border-purple-200 bg-purple-50 text-purple-600",
+          Icon: TrendingDown,
+        }
+      : {
+          label: "RECOMMENDATION",
+          badge: "border-blue-200 bg-blue-50 text-blue-700",
+          icon: "border-blue-200 bg-blue-50 text-blue-600",
+          Icon: Lightbulb,
+        };
+  const Icon = tone.Icon;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={cn("rounded-md border px-2 py-0.5 text-[11px] font-semibold", tone.badge)}>
+          {tone.label}
+        </span>
+        {insight.score !== null && (
+          <span className="text-xs text-muted-foreground">
+            Confidence {Math.round((insight.score ?? 0) * 100)}%
+          </span>
+        )}
+        <span className="ml-auto text-xs text-muted-foreground/70">
+          {formatRelativeTime(insight.createdAt)}
+        </span>
+      </div>
+      <div className="mt-3 flex gap-3">
+        <div
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
+            tone.icon
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-sm font-semibold leading-snug">{title}</p>
+          {body && <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-border/50 pb-2 last:border-0 last:pb-0">
+      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-right text-sm font-medium">{value ?? "-"}</span>
+    </div>
+  );
 }
 
 export function CampaignDetail({ campaign }: CampaignDetailProps) {
@@ -119,14 +262,24 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeChart, setActiveChart] = useState<ChartTab>("spend");
 
-  // Fetch all metrics for chart + stats
-  useEffect(() => {
-    fetchMetrics(campaign.id)
-      .then(setAllMetrics)
-      .catch(() => {});
+  const loadMetrics = useCallback(async () => {
+    const metrics = await fetchMetrics(campaign.id);
+    setAllMetrics(metrics);
   }, [campaign.id]);
 
-  // ── Handlers ────────────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchMetrics(campaign.id)
+      .then((metrics) => {
+        if (!cancelled) setAllMetrics(metrics);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [campaign.id]);
 
   const handleDelete = async () => {
     await remove(campaign.id);
@@ -147,16 +300,92 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
     }
   }, [campaign.id]);
 
-  // ── Computed: timeline ────────────────────────────────────
+  const sorted = [...allMetrics].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+  const recent7 = sorted.slice(-7);
+  const prev7 = sorted.slice(-14, -7);
 
-  const hasTimeline = !!(campaign.startDate ?? campaign.createdAt) &&
-    !!(campaign.endDate ?? campaign.deadline);
+  const totalSpend = allMetrics.reduce((sum, metric) => sum + metric.spend, 0);
+  const totalImpressions = allMetrics.reduce((sum, metric) => sum + metric.impressions, 0);
+  const totalClicks = allMetrics.reduce((sum, metric) => sum + metric.clicks, 0);
+  const totalConversions = allMetrics.reduce(
+    (sum, metric) => sum + (metric.conversions ?? 0),
+    0
+  );
+  const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : null;
+  const cpc = totalClicks > 0 ? totalSpend / totalClicks : null;
+
+  const rSpend = recent7.reduce((sum, metric) => sum + metric.spend, 0);
+  const pSpend = prev7.reduce((sum, metric) => sum + metric.spend, 0);
+  const rClicks = recent7.reduce((sum, metric) => sum + metric.clicks, 0);
+  const pClicks = prev7.reduce((sum, metric) => sum + metric.clicks, 0);
+  const rImpressions = recent7.reduce((sum, metric) => sum + metric.impressions, 0);
+  const pImpressions = prev7.reduce((sum, metric) => sum + metric.impressions, 0);
+  const rConversions = recent7.reduce((sum, metric) => sum + (metric.conversions ?? 0), 0);
+  const pConversions = prev7.reduce((sum, metric) => sum + (metric.conversions ?? 0), 0);
+  const rCtr = rImpressions > 0 ? rClicks / rImpressions : 0;
+  const pCtr = pImpressions > 0 ? pClicks / pImpressions : 0;
+  const rCpc = rClicks > 0 ? rSpend / rClicks : 0;
+  const pCpc = pClicks > 0 ? pSpend / pClicks : 0;
+
+  const noMetrics = allMetrics.length === 0;
+  const metricCards = [
+    {
+      label: "Spend",
+      value: noMetrics ? "-" : formatCurrency(totalSpend),
+      change: pctChange(rSpend, pSpend),
+      helper: campaign.budget ? `${formatCurrency(campaign.budget)} budget` : "No budget",
+    },
+    {
+      label: "Conversions",
+      value: noMetrics ? "-" : formatCompact(totalConversions),
+      change: pctChange(rConversions, pConversions),
+      helper: "Last 7 days",
+    },
+    {
+      label: "CTR",
+      value: noMetrics || ctr === null ? "-" : `${ctr.toFixed(2)}%`,
+      change: pctChange(rCtr, pCtr),
+      helper: "Engagement",
+    },
+    {
+      label: "CPC",
+      value: noMetrics || cpc === null ? "-" : formatCurrency(cpc),
+      change: pctChange(rCpc, pCpc),
+      helper: "Efficiency",
+    },
+    {
+      label: "Clicks",
+      value: noMetrics ? "-" : formatCompact(totalClicks),
+      change: pctChange(rClicks, pClicks),
+      helper: "Traffic",
+    },
+    {
+      label: "Impressions",
+      value: noMetrics ? "-" : formatCompact(totalImpressions),
+      change: pctChange(rImpressions, pImpressions),
+      helper: "Reach",
+    },
+  ];
+
+  const chartData = sorted.map((metric) => ({
+    date: new Date(metric.date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    }),
+    spend: metric.spend,
+    clicks: metric.clicks,
+    impressions: metric.impressions,
+    conversions: metric.conversions ?? 0,
+  }));
 
   const today = new Date();
   const startDate = new Date(campaign.startDate ?? campaign.createdAt);
   const endDate = campaign.endDate ?? campaign.deadline
     ? new Date((campaign.endDate ?? campaign.deadline)!)
     : null;
+  const hasTimeline = !!(campaign.startDate ?? campaign.createdAt) && !!endDate;
 
   let progressPercent = 0;
   let daysLeft = 0;
@@ -169,541 +398,285 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
     daysLeft = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / 86_400_000));
   }
 
-  // ── Computed: metric totals + pct change ─────────────────
-
-  const sorted = [...allMetrics].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
-  const recent7 = sorted.slice(-7);
-  const prev7 = sorted.slice(-14, -7);
-
-  const totalSpend = allMetrics.reduce((s, m) => s + m.spend, 0);
-  const totalImpressions = allMetrics.reduce((s, m) => s + m.impressions, 0);
-  const totalClicks = allMetrics.reduce((s, m) => s + m.clicks, 0);
-  const totalConversions = allMetrics.reduce((s, m) => s + (m.conversions ?? 0), 0);
-  const ctr = totalImpressions > 0 ? totalClicks / totalImpressions * 100 : null;
-  const cpc = totalClicks > 0 ? totalSpend / totalClicks : null;
-
-  const rSpend = recent7.reduce((s, m) => s + m.spend, 0);
-  const pSpend = prev7.reduce((s, m) => s + m.spend, 0);
-  const rImpressions = recent7.reduce((s, m) => s + m.impressions, 0);
-  const pImpressions = prev7.reduce((s, m) => s + m.impressions, 0);
-  const rClicks = recent7.reduce((s, m) => s + m.clicks, 0);
-  const pClicks = prev7.reduce((s, m) => s + m.clicks, 0);
-  const rConversions = recent7.reduce((s, m) => s + (m.conversions ?? 0), 0);
-  const pConversions = prev7.reduce((s, m) => s + (m.conversions ?? 0), 0);
-  const rCTR = rImpressions > 0 ? rClicks / rImpressions : 0;
-  const pCTR = pImpressions > 0 ? pClicks / pImpressions : 0;
-  const rCPC = rClicks > 0 ? rSpend / rClicks : 0;
-  const pCPC = pClicks > 0 ? pSpend / pClicks : 0;
-
-  const noMetrics = allMetrics.length === 0;
-
-  const metricCells: { label: string; value: string; change: string | null }[] = [
-    {
-      label: "SPEND",
-      value: noMetrics ? "—" : formatCurrency(totalSpend),
-      change: pctChange(rSpend, pSpend),
-    },
-    {
-      label: "IMPRESSIONS",
-      value: noMetrics ? "—" : formatCompact(totalImpressions),
-      change: pctChange(rImpressions, pImpressions),
-    },
-    {
-      label: "CLICKS",
-      value: noMetrics ? "—" : formatCompact(totalClicks),
-      change: pctChange(rClicks, pClicks),
-    },
-    {
-      label: "CONVERSIONS",
-      value: noMetrics ? "—" : formatCompact(totalConversions),
-      change: pctChange(rConversions, pConversions),
-    },
-    {
-      label: "CTR",
-      value: noMetrics || ctr === null ? "—" : `${ctr.toFixed(2)}%`,
-      change: pctChange(rCTR, pCTR),
-    },
-    {
-      label: "CPC",
-      value: noMetrics || cpc === null ? "—" : formatCurrency(cpc),
-      change: pctChange(rCPC, pCPC),
-    },
-  ];
-
-  // ── Computed: chart data ──────────────────────────────────
-
-  const chartData = sorted.map((m) => ({
-    date: new Date(m.date).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    }),
-    spend: m.spend,
-    clicks: m.clicks,
-    impressions: m.impressions,
-    conversions: m.conversions ?? 0,
-  }));
-
-  // ── Computed: activity feed ───────────────────────────────
-
-  type ActivityItem = { title: string; description: string; date: string };
-
-  const activities: ActivityItem[] = [
-    ...insights.map((ins) => ({
-      title: "New insight generated",
-      description: `${ins.type.charAt(0).toUpperCase() + ins.type.slice(1)} flagged`,
-      date: ins.createdAt,
+  const activities = [
+    ...insights.map((insight) => ({
+      title: "Insight generated",
+      detail: `${insight.type.charAt(0).toUpperCase() + insight.type.slice(1)} signal flagged`,
+      date: insight.createdAt,
     })),
     ...[...allMetrics]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 3)
-      .map((m) => ({
+      .map((metric) => ({
         title: "Metrics updated",
-        description: `Data recorded for ${new Date(m.date).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        })}`,
-        date: m.date,
+        detail: `Data recorded for ${formatDateMedium(metric.date)}`,
+        date: metric.date,
       })),
     {
       title: "Campaign created",
-      description: `Added on ${formatDateMedium(campaign.createdAt)}`,
+      detail: `Added to ${campaign.client?.name ?? "client"}`,
       date: campaign.createdAt,
     },
   ]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
 
-  // ── Client initials ───────────────────────────────────────
-
-  const clientInitials = campaign.client
-    ? getInitials(campaign.client.name)
-    : "?";
-
-  // ── Render ────────────────────────────────────────────────
+  const clientInitials = campaign.client ? getInitials(campaign.client.name) : "?";
 
   return (
     <>
-      <div className="mx-auto max-w-7xl space-y-6 px-4 py-5 sm:px-6 sm:py-6">
-
-        {/* Back */}
+      <div className="space-y-6">
         <button
           onClick={() => router.push("/campaigns")}
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group w-fit"
+          className="group inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card px-2.5 py-1.5 text-sm font-medium text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground"
         >
-          <span className="flex items-center justify-center h-7 w-7 rounded-md border border-border bg-card group-hover:bg-muted transition-colors">
-            <ArrowLeftIcon className="h-3.5 w-3.5" />
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors group-hover:bg-background group-hover:text-foreground">
+            <ArrowLeft className="h-3.5 w-3.5" />
           </span>
           Back to Campaigns
         </button>
 
-        {/* ── HEADER ────────────────────────────────────── */}
-        <div className="space-y-2">
-          {/* Breadcrumb + actions */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <div className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
-                {clientInitials}
-              </div>
-              {campaign.client && (
-                <>
-                  <span
-                    className="font-medium text-foreground cursor-pointer hover:underline underline-offset-2"
-                    onClick={() => router.push(`/clients/${campaign.clientId}`)}
-                  >
-                    {campaign.client.name}
+        <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="bg-gradient-to-br from-primary/10 via-[hsl(var(--brand-soft))] to-background px-5 py-5">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 space-y-4">
+                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary ring-1 ring-primary/15">
+                    {clientInitials}
                   </span>
-                  <span>·</span>
-                </>
-              )}
-              <span>{campaign.platform}</span>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => router.push(`/campaigns/${campaign.id}/edit`)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 h-9 text-sm font-medium hover:bg-muted/50 transition-colors"
-              >
-                <PencilIcon className="w-3.5 h-3.5" />
-                Edit
-              </button>
-              <div className="relative">
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="rounded-lg border border-border bg-background w-9 h-9 flex items-center justify-center hover:bg-muted/50 transition-colors"
-                >
-                  <EllipsisHorizontalIcon className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Title + status */}
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <h1 className="min-w-0 text-2xl font-semibold tracking-tight">
-              {campaign.name}
-            </h1>
-            <StatusBadge status={campaign.status} />
-          </div>
-
-          {/* Description */}
-          {campaign.description && (
-            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              {campaign.description}
-            </p>
-          )}
-        </div>
-
-        {/* ── TIMELINE BAR ──────────────────────────────── */}
-        {hasTimeline && endDate && (
-          <div className="flex flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3.5 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
-            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground sm:shrink-0">
-              <CalendarIcon className="w-4 h-4" />
-              <span>{formatDateMedium(campaign.startDate ?? campaign.createdAt)}</span>
-              <span className="text-muted-foreground/50">→</span>
-              <span>{formatDateMedium(campaign.endDate ?? campaign.deadline)}</span>
-            </div>
-            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-foreground transition-all"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <span className="text-sm text-muted-foreground sm:shrink-0">
-              {progressPercent}% · {daysLeft} days left
-            </span>
-          </div>
-        )}
-
-        {/* ── PERFORMANCE METRICS ROW ───────────────────── */}
-        <div className="rounded-xl border border-border bg-card">
-          <div className="grid grid-cols-2 divide-x divide-y divide-border sm:grid-cols-3 lg:grid-cols-6 lg:divide-y-0">
-            {metricCells.map((cell) => {
-              const change = cell.change !== null ? parseFloat(cell.change) : null;
-              const isPositive = change !== null && change >= 0;
-              return (
-                <div key={cell.label} className="px-5 py-4 flex flex-col gap-1">
-                  <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {cell.label}
-                  </span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xl font-semibold tracking-tight">
-                      {cell.value}
-                    </span>
-                    {change !== null && (
-                      <span
-                        className={cn(
-                          "text-xs font-medium flex items-center gap-0.5",
-                          isPositive ? "text-green-600" : "text-red-500"
-                        )}
-                      >
-                        {isPositive ? "↑" : "↓"}
-                        {Math.abs(change).toFixed(1)}%
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── TWO-COLUMN SECTION ────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-
-          {/* LEFT: AI Insights */}
-          <div>
-            {/* Insights header */}
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-2">
-                  <SparklesIcon className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-semibold uppercase tracking-wide">
-                    AI Insights
-                  </span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  Prioritized signals from the last 7 days · {insights.length} active
-                </span>
-              </div>
-              <button
-                onClick={handleGenerateInsights}
-                disabled={generating}
-                className="h-8 w-fit rounded-lg border border-border px-3 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-50"
-              >
-                {generating ? "Generating…" : "Regenerate"}
-              </button>
-            </div>
-
-            {insightError && (
-              <p className="text-xs text-destructive mb-3">{insightError}</p>
-            )}
-
-            {/* Loading skeletons */}
-            {generating ? (
-              <div className="space-y-3">
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className="rounded-xl border border-border bg-card p-5 space-y-3 animate-pulse"
-                  >
-                    <div className="h-4 bg-muted rounded w-24" />
-                    <div className="h-4 bg-muted rounded w-3/4" />
-                    <div className="h-3 bg-muted rounded w-full" />
-                    <div className="h-3 bg-muted rounded w-5/6" />
-                  </div>
-                ))}
-              </div>
-            ) : insights.length > 0 ? (
-              <div className="space-y-3">
-                {insights.map((insight) => {
-                  const type = insight.type;
-                  const colonIdx = insight.content.indexOf(":");
-                  const title =
-                    colonIdx > -1
-                      ? insight.content.slice(0, colonIdx)
-                      : insight.content;
-                  const body =
-                    colonIdx > -1
-                      ? insight.content.slice(colonIdx + 1).trim()
-                      : "";
-
-                  return (
-                    <div
-                      key={insight.id}
-                      className="rounded-xl border border-border bg-card p-5 space-y-3 hover:border-border/80 transition-colors"
+                  {campaign.client && (
+                    <button
+                      onClick={() => router.push(`/clients/${campaign.clientId}`)}
+                      className="font-medium text-foreground underline-offset-2 hover:underline"
                     >
-                      {/* Type badge + confidence */}
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md",
-                            type === "risk"
-                              ? "bg-orange-50 text-orange-600 border border-orange-200"
-                              : type === "performance"
-                              ? "bg-purple-50 text-purple-600 border border-purple-200"
-                              : "bg-blue-50 text-blue-600 border border-blue-200"
-                          )}
-                        >
-                          {type === "performance" ? "TREND" : type.toUpperCase()}
-                        </span>
-                        {insight.score !== null && (
-                          <span className="text-xs text-muted-foreground">
-                            Confidence {Math.round((insight.score ?? 0) * 100)}%
-                          </span>
-                        )}
-                      </div>
+                      {campaign.client.name}
+                    </button>
+                  )}
+                  <span>·</span>
+                  <PlatformPill platform={campaign.platform} />
+                </div>
 
-                      {/* Icon + content */}
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={cn(
-                            "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
-                            type === "risk"
-                              ? "bg-orange-50 text-orange-500"
-                              : type === "performance"
-                              ? "bg-purple-50 text-purple-500"
-                              : "bg-blue-50 text-blue-500"
-                          )}
-                        >
-                          {type === "risk" && (
-                            <ExclamationTriangleIcon className="w-4 h-4" />
-                          )}
-                          {type === "performance" && (
-                            <ArrowTrendingDownIcon className="w-4 h-4" />
-                          )}
-                          {type === "recommendation" && (
-                            <LightBulbIcon className="w-4 h-4" />
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm font-semibold leading-snug">
-                            {title}
-                          </p>
-                          {body && (
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                              {body}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <button className="text-xs font-medium text-primary hover:underline underline-offset-2 ml-11">
-                        Take action →
-                      </button>
-                    </div>
-                  );
-                })}
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="min-w-0 text-2xl font-semibold tracking-tight md:text-3xl">
+                      {campaign.name}
+                    </h1>
+                    <StatusPill status={campaign.status} />
+                  </div>
+                  {campaign.description && (
+                    <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                      {campaign.description}
+                    </p>
+                  )}
+                </div>
               </div>
-            ) : (
-              /* Empty state */
-              <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center space-y-3">
-                <SparklesIcon className="w-8 h-8 text-muted-foreground/50 mx-auto" />
+
+              <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-fit">
+                <Button className="sm:w-fit" onClick={() => setShowAddMetrics(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Metrics
+                </Button>
+                <Button
+                  variant="outline"
+                  className="bg-card/80"
+                  onClick={() => router.push(`/campaigns/${campaign.id}/edit`)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="bg-card/80"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  aria-label="Open campaign actions"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {hasTimeline && endDate && (
+              <div className="mt-5 rounded-xl border border-border/70 bg-card/75 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground sm:shrink-0">
+                    <CalendarDays className="h-4 w-4" />
+                    <span>{formatDateMedium(campaign.startDate ?? campaign.createdAt)}</span>
+                    <span className="text-muted-foreground/50">to</span>
+                    <span>{formatDateMedium(campaign.endDate ?? campaign.deadline)}</span>
+                  </div>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-foreground transition-all"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {progressPercent}% complete · {daysLeft} days left
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          {metricCards.map((metric) => (
+            <MetricCard key={metric.label} {...metric} />
+          ))}
+        </section>
+
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
+          <div className="space-y-6">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-medium">No insights yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Add metrics data then generate AI insights for this campaign.
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Performance Trends
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Daily movement across spend, clicks, impressions, and conversions.
                   </p>
                 </div>
-                <button
-                  onClick={handleGenerateInsights}
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  Generate insights →
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* RIGHT: Details + Activity */}
-          <div className="space-y-6">
-
-            {/* Details panel */}
-            <div className="rounded-xl border border-border bg-card p-5">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-4">
-                Details
-              </h3>
-              <div className="space-y-0">
-                {[
-                  { label: "GOAL", value: formatGoal(campaign.goal) },
-                  { label: "PLATFORM", value: campaign.platform },
-                  { label: "DEADLINE", value: formatDateMedium(campaign.deadline) },
-                  { label: "CREATED", value: formatDateMedium(campaign.createdAt) },
-                  { label: "CLIENT", value: campaign.client?.name ?? "—" },
-                  { label: "STATUS", value: <StatusBadge status={campaign.status} /> },
-                ].map(({ label, value }) => (
-                  <div
-                    key={label}
-                    className="flex items-center justify-between py-2 border-b border-border/50 last:border-0"
-                  >
-                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {label}
-                    </span>
-                    <span className="text-sm font-medium text-right">
-                      {value ?? "—"}
-                    </span>
-                  </div>
-                ))}
+                <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-border bg-muted/35 p-1">
+                  {(["spend", "clicks", "impressions", "conversions"] as ChartTab[]).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveChart(tab)}
+                      className={cn(
+                        "h-8 shrink-0 rounded-lg px-3 text-xs font-medium capitalize transition-colors",
+                        activeChart === tab
+                          ? "bg-card text-foreground shadow-sm ring-1 ring-border"
+                          : "text-muted-foreground hover:bg-card/70 hover:text-foreground"
+                      )}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <button
-                onClick={() => setShowAddMetrics(true)}
-                className="mt-4 w-full rounded-lg border border-border bg-background h-9 text-sm font-medium hover:bg-muted/50 transition-colors"
-              >
-                + Add Metrics
-              </button>
+              {chartData.length === 0 ? (
+                <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">
+                  No metrics data yet. Add metrics to see trends.
+                </div>
+              ) : (
+                <CampaignTrendChart data={chartData} activeChart={activeChart} />
+              )}
             </div>
 
-            {/* Activity panel */}
-            <div className="rounded-xl border border-border bg-card p-5">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-4">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    AI Insights
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Prioritized signals from recent campaign movement.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={handleGenerateInsights}
+                  disabled={generating}
+                >
+                  {generating ? "Generating..." : "Regenerate"}
+                </Button>
+              </div>
+
+              {insightError && <p className="mb-3 text-xs text-destructive">{insightError}</p>}
+
+              {generating ? (
+                <div className="space-y-3">
+                  {[0, 1, 2].map((item) => (
+                    <div
+                      key={item}
+                      className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm"
+                    >
+                      <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+                      <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+                      <div className="h-3 w-full animate-pulse rounded bg-muted" />
+                    </div>
+                  ))}
+                </div>
+              ) : insights.length > 0 ? (
+                <div className="space-y-3">
+                  {insights.map((insight) => (
+                    <InsightCard key={insight.id} insight={insight} />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
+                  <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                  <p className="mt-3 text-sm font-medium">No insights yet</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Add metrics data, then generate AI insights for this campaign.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <aside className="space-y-6">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Details
+              </p>
+              <div className="mt-4 space-y-3">
+                <DetailRow label="Goal" value={formatGoal(campaign.goal)} />
+                <DetailRow label="Platform" value={campaign.platform} />
+                <DetailRow
+                  label="Budget"
+                  value={campaign.budget ? formatCurrency(campaign.budget) : "-"}
+                />
+                <DetailRow label="Deadline" value={formatDateMedium(campaign.deadline)} />
+                <DetailRow label="Created" value={formatDateMedium(campaign.createdAt)} />
+                <DetailRow label="Client" value={campaign.client?.name ?? "-"} />
+                <DetailRow label="Status" value={<StatusPill status={campaign.status} />} />
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Activity
-              </h3>
-              <div className="space-y-4">
-                {activities.map((item, i) => (
-                  <div key={i} className="flex gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40 mt-1.5 shrink-0" />
+              </p>
+              <div className="mt-4 space-y-4">
+                {activities.map((activity, index) => (
+                  <div key={`${activity.title}-${index}`} className="flex gap-3">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
                     <div>
-                      <p className="text-sm font-medium leading-snug">
-                        {item.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {item.description}
-                      </p>
-                      <p className="text-xs text-muted-foreground/60 mt-0.5">
-                        {formatRelativeTime(item.date)}
+                      <p className="text-sm font-medium leading-snug">{activity.title}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{activity.detail}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground/60">
+                        {formatRelativeTime(activity.date)}
                       </p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* ── PERFORMANCE TRENDS ────────────────────────── */}
-        <div className="rounded-xl border border-border bg-card p-5">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Performance Trends
-            </h3>
-
-            {/* Tab switcher */}
-            <div className="flex max-w-full items-center overflow-x-auto rounded-lg border border-border">
-              {(["spend", "clicks", "impressions", "conversions"] as ChartTab[]).map(
-                (tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveChart(tab)}
-                    className={cn(
-                      "px-3 h-7 text-xs font-medium transition-colors capitalize",
-                      activeChart === tab
-                        ? "bg-foreground text-background"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {tab}
-                  </button>
-                )
-              )}
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">Next best action</p>
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Review recent movement and add fresh metrics before making budget changes.
+              </p>
             </div>
-          </div>
-
-          {chartData.length === 0 ? (
-            <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
-              No metrics data yet — add metrics to see trends.
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={chartData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="hsl(var(--border))"
-                />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(v) =>
-                    activeChart === "spend" ? formatCurrency(v) : formatCompact(v)
-                  }
-                />
-                <Tooltip
-                  content={
-                    <ChartTooltip tab={activeChart} />
-                  }
-                />
-                <Line
-                  type="monotone"
-                  dataKey={activeChart}
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4, strokeWidth: 0 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+          </aside>
+        </section>
       </div>
 
-      {/* ── MODALS ──────────────────────────────────────── */}
       <AddMetricModal
         open={showAddMetrics}
         onClose={() => setShowAddMetrics(false)}
         campaignId={campaign.id}
         onSuccess={() => {
-          fetchMetrics(campaign.id).then(setAllMetrics).catch(() => {});
+          loadMetrics().catch(() => {});
         }}
       />
 
@@ -712,6 +685,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
         title="Delete Campaign"
         description={`Are you sure you want to delete "${campaign.name}"? This action cannot be undone.`}
         confirmLabel="Delete"
+        loadingLabel="Deleting..."
         loading={mutationLoading}
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteConfirm(false)}
