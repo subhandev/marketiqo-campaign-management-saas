@@ -14,6 +14,10 @@ export const createCampaignSchema = z.object({
     .optional(),
   platform: z.string().min(1, "Platform is required"),
   goal: z.string().optional(),
+  budget: z
+    .number()
+    .min(0, "Budget must be a positive amount")
+    .optional(),
   status: z
     .enum(["planned", "active", "at_risk", "completed", "archived"])
     .default("planned"),
