@@ -142,13 +142,6 @@ export default function SignInPage() {
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          {!isLoaded && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
-              <p className="text-xs font-medium text-amber-700">
-                Loading auth…
-              </p>
-            </div>
-          )}
           {/* General error */}
           {errors.general && (
             <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2.5">
@@ -252,7 +245,7 @@ export default function SignInPage() {
           {/* Submit */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={!isLoaded || loading}
             className="h-11 w-full rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-70"
             style={{
               background: loading
@@ -291,7 +284,7 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={handleGoogleSignIn}
-            disabled={googleLoading}
+            disabled={!isLoaded || googleLoading}
             className="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-zinc-200 bg-white text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-70"
           >
             {googleLoading ? (

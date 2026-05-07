@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Bell, CircleHelp } from "lucide-react";
+import { Search, Bell, CircleHelp, PanelLeftOpen } from "lucide-react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import {
@@ -12,7 +12,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { getInitials } from "@/shared/format/strings";
 
-export function Header() {
+export function Header({
+  onMobileMenuClick,
+}: {
+  onMobileMenuClick?: () => void;
+}) {
   const { user } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
@@ -26,12 +30,23 @@ export function Header() {
       style={{ background: "hsl(var(--background) / 0.85)" }}
     >
       {/* Left */}
-      <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 h-10 w-80 focus-within:bg-background focus-within:ring-1 focus-within:ring-ring transition-colors">
+      <div className="flex items-center gap-2 min-w-0">
+        <button
+          type="button"
+          onClick={onMobileMenuClick}
+          className="md:hidden w-9 h-9 rounded-lg border border-border bg-background/60 flex items-center justify-center hover:bg-muted transition-colors shrink-0"
+          aria-label="Open navigation"
+        >
+          <PanelLeftOpen size={16} />
+        </button>
+
+        <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 h-10 w-full max-w-[20rem] focus-within:bg-background focus-within:ring-1 focus-within:ring-ring transition-colors">
         <Search size={14} className="text-muted-foreground shrink-0" />
         <input
           placeholder="Search..."
           className="bg-transparent text-sm outline-none flex-1"
         />
+        </div>
       </div>
 
       {/* Right */}
