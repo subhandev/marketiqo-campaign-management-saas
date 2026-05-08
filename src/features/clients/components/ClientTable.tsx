@@ -14,6 +14,7 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { Client } from "@/features/clients/types";
 import { getInitials } from "@/shared/format/strings";
 import { formatDateMedium } from "@/shared/format/dates";
+import { formatRelativeTime } from "@/shared/format/dates";
 import { cn } from "@/lib/utils";
 
 interface ClientTableProps {
@@ -40,7 +41,7 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
 
   return (
     <>
-    <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+    <div className="hidden sm:block bg-card rounded-xl border border-border shadow-sm overflow-hidden">
       <div className="w-full overflow-x-auto">
       <table className="w-full min-w-[760px]">
         {/* HEADER */}
@@ -48,8 +49,10 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
           <tr>
             {[
               { label: "Client", cls: "" },
-              { label: "Company", cls: "" },
-              { label: "Industry", cls: "hidden lg:table-cell" },
+              { label: "Company", cls: "hidden md:table-cell" },
+              { label: "Needs attention", cls: "" },
+              { label: "Active", cls: "hidden md:table-cell" },
+              { label: "Last activity", cls: "" },
               { label: "Email", cls: "hidden lg:table-cell" },
               { label: "Campaigns", cls: "" },
               { label: "Status", cls: "" },
@@ -90,13 +93,31 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
               </td>
 
               {/* COMPANY */}
-              <td className="px-5 py-3 text-sm text-muted-foreground whitespace-nowrap">
+              <td className="hidden md:table-cell px-5 py-3 text-sm text-muted-foreground whitespace-nowrap">
                 {client.company ?? "—"}
               </td>
 
-              {/* INDUSTRY */}
-              <td className="hidden lg:table-cell px-5 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                {client.industry ?? "—"}
+              {/* NEEDS ATTENTION */}
+              <td className="px-5 py-3">
+                {client.atRiskCampaignsCount && client.atRiskCampaignsCount > 0 ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-xs font-medium text-orange-700">
+                    {client.atRiskCampaignsCount} at risk
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">—</span>
+                )}
+              </td>
+
+              {/* ACTIVE CAMPAIGNS */}
+              <td className="hidden md:table-cell px-5 py-3">
+                <span className="text-sm font-medium">
+                  {client.activeCampaignsCount ?? 0}
+                </span>
+              </td>
+
+              {/* LAST ACTIVITY */}
+              <td className="px-5 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                {client.lastActivityAt ? formatRelativeTime(client.lastActivityAt) : "—"}
               </td>
 
               {/* EMAIL */}
@@ -174,6 +195,11 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
 
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
+                          onClick={() => router.push(`/campaigns/new?clientId=${client.id}`)}
+                        >
+                          Add campaign
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onClick={() => router.push(`/clients/${client.id}`)}
                         >
                           View
@@ -199,6 +225,73 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
         </tbody>
       </table>
       </div>
+    </div>
+    <div className="mt-3 space-y-2 sm:hidden">
+      {clients.map((client) => (
+        <button
+          key={client.id}
+          type="button"
+          onClick={() => router.push(`/clients/${client.id}`)}
+          className="w-full rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/20"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                  {getInitials(client.name)}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{client.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {client.company ?? "—"}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {client.lastActivityAt ? formatRelativeTime(client.lastActivityAt) : "—"}
+            </span>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {client.atRiskCampaignsCount && client.atRiskCampaignsCount > 0 ? (
+              <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700">
+                {client.atRiskCampaignsCount} at risk
+              </span>
+            ) : (
+              <span className="text-[11px] text-muted-foreground">No risks</span>
+            )}
+
+            <span className="inline-flex items-center rounded-full border border-border bg-muted/35 px-2 py-0.5 text-[11px] font-medium text-foreground">
+              Active {client.activeCampaignsCount ?? 0}
+            </span>
+
+            <span
+              className="inline-flex items-center rounded-full border border-border bg-muted/20 px-2 py-0.5 text-[11px] font-medium text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/campaigns?clientId=${client.id}`);
+              }}
+            >
+              Campaigns {client._count?.campaigns ?? 0}
+            </span>
+          </div>
+
+          <div className="mt-3 flex flex-col gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="justify-between"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/campaigns/new?clientId=${client.id}`);
+              }}
+            >
+              Add campaign <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </button>
+      ))}
     </div>
     <ConfirmModal
       open={!!clientToDelete}

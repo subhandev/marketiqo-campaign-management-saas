@@ -35,6 +35,9 @@ export type Client = {
   status: ClientStatus;
   createdAt: string;
   updatedAt: string;
+  activeCampaignsCount?: number;
+  atRiskCampaignsCount?: number;
+  lastActivityAt?: string | null;
   workspace?: {
     isDemo: boolean;
   };

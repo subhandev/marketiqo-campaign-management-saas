@@ -14,6 +14,23 @@ export async function getClientsByWorkspace(workspaceId: string) {
       _count: {
         select: { campaigns: true },
       },
+      campaigns: {
+        select: {
+          id: true,
+          status: true,
+          updatedAt: true,
+          metrics: {
+            orderBy: { date: "desc" },
+            take: 1,
+            select: { date: true },
+          },
+          insights: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: { createdAt: true },
+          },
+        },
+      },
     },
   });
 }
