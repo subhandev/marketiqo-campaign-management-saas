@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 import { Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ClientTable } from "@/features/clients/components/ClientTable";
 import { ClientTableSkeleton } from "@/features/clients/components/ClientTableSkeleton";
 import {
@@ -19,12 +26,20 @@ const FILTERS = [
   { value: "inactive", label: "Inactive" },
 ] as const;
 
+const SORTS = [
+  { value: "needs_attention", label: "Needs attention" },
+  { value: "recent_activity", label: "Recent activity" },
+  { value: "most_campaigns", label: "Most campaigns" },
+  { value: "name_az", label: "Name (A–Z)" },
+] as const;
+
 export function ClientListView() {
   const router = useRouter();
   const { clients, loading, error, refresh } = useClients();
   const { remove } = useClientMutations();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
+  const [sort, setSort] = useState<(typeof SORTS)[number]["value"]>("needs_attention");
 
   const statusCounts = useMemo(
     () => ({
@@ -38,7 +53,7 @@ export function ClientListView() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
 
-    return clients
+    const base = clients
       .filter((client) => {
         if (filter === "active") return client.status === "active";
         if (filter === "inactive") return client.status === "inactive";
@@ -52,6 +67,31 @@ export function ClientListView() {
           client.company?.toLowerCase().includes(q)
         );
       });
+    
+    const sorted = [...base].sort((a, b) => {
+      if (sort === "needs_attention") {
+        const arA = a.atRiskCampaignsCount ?? 0;
+        const arB = b.atRiskCampaignsCount ?? 0;
+        if (arB !== arA) return arB - arA;
+        const tA = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : 0;
+        const tB = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : 0;
+        return tB - tA;
+      }
+      if (sort === "recent_activity") {
+        const tA = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : 0;
+        const tB = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : 0;
+        return tB - tA;
+      }
+      if (sort === "most_campaigns") {
+        const cA = a._count?.campaigns ?? 0;
+        const cB = b._count?.campaigns ?? 0;
+        return cB - cA;
+      }
+      // name_az
+      return a.name.localeCompare(b.name);
+    });
+
+    return sorted;
   }, [clients, filter, search]);
 
   const handleDelete = async (id: string) => {
@@ -129,12 +169,34 @@ export function ClientListView() {
           })}
         </div>
 
-        <Input
-          placeholder="Search clients..."
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          className="w-full lg:max-w-xs"
-        />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Input
+            placeholder="Search clients..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="w-full lg:max-w-xs"
+          />
+          <Select value={sort} onValueChange={(v) => setSort(v as any)}>
+            <SelectTrigger className="h-10 w-full border-border bg-muted/50 px-3 shadow-none transition-colors hover:bg-muted/70 focus-visible:bg-background sm:w-44">
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent
+              position="popper"
+              align="end"
+              className="min-w-[220px] rounded-xl border border-border bg-popover p-1 shadow-lg"
+            >
+              {SORTS.map((s) => (
+                <SelectItem
+                  key={s.value}
+                  className="h-9 cursor-pointer rounded-lg pl-2.5 pr-8"
+                  value={s.value}
+                >
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
