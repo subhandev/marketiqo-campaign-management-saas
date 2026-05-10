@@ -686,9 +686,9 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
               )}
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm ring-1 ring-border/80">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     AI Insights
                   </p>
@@ -697,13 +697,15 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                   </p>
                 </div>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8"
+                  type="button"
+                  variant="default"
+                  size="default"
+                  className="h-9 w-full shrink-0 gap-2 sm:w-auto"
                   onClick={handleGenerateInsights}
                   disabled={generating}
                 >
-                  {generating ? "Generating..." : "Regenerate"}
+                  <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
+                  {generating ? "Generating..." : "Regenerate insights"}
                 </Button>
               </div>
 

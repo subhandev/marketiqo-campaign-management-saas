@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 const STEPS = [
   { label: "Creating clients and campaign structures" },
   { label: "Loading metrics and performance data" },
-  { label: "Generating AI insights with Groq" },
+  { label: "Generating AI insights with OpenAI" },
 ];
 
 interface DemoSeedOverlayProps {
