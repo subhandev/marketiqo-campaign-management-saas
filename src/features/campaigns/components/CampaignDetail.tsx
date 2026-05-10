@@ -293,6 +293,13 @@ function InsightCard({ insight }: { insight: Insight }) {
           icon: "border-purple-200 bg-purple-50 text-purple-600",
           Icon: TrendingDown,
         }
+      : type === "summary"
+      ? {
+          label: "SNAPSHOT",
+          badge: "border-emerald-200 bg-emerald-50 text-emerald-800",
+          icon: "border-emerald-200 bg-emerald-50 text-emerald-700",
+          Icon: Sparkles,
+        }
       : {
           label: "RECOMMENDATION",
           badge: "border-blue-200 bg-blue-50 text-blue-700",
