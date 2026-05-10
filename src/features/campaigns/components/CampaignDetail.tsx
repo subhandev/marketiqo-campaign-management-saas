@@ -36,6 +36,93 @@ import { cn } from "@/lib/utils";
 
 type ChartTab = "spend" | "clicks" | "impressions" | "conversions";
 
+const MS_DAY = 86_400_000;
+
+type ScheduleDerived = {
+  progressPercent: number;
+  daysLeftUntilEnd: number;
+  daysUntilStart: number;
+  ended: boolean;
+  notStarted: boolean;
+  invalidOrder: boolean;
+};
+
+function isValidTimelineDate(d: Date | null): d is Date {
+  return d != null && Number.isFinite(d.getTime()) && !Number.isNaN(d.getTime());
+}
+
+function deriveScheduleTimeline(start: Date, end: Date, now: Date): ScheduleDerived | null {
+  const startMs = start.getTime();
+  const endMs = end.getTime();
+  const nowMs = now.getTime();
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return null;
+  if (Number.isNaN(startMs) || Number.isNaN(endMs)) return null;
+
+  const span = endMs - startMs;
+
+  const daysUntilStart = Math.max(0, Math.ceil((startMs - nowMs) / MS_DAY));
+  const daysLeftUntilEnd = Math.max(0, Math.ceil((endMs - nowMs) / MS_DAY));
+
+  if (span < 0) {
+    return {
+      progressPercent: 0,
+      daysLeftUntilEnd,
+      daysUntilStart: 0,
+      ended: nowMs >= endMs,
+      notStarted: false,
+      invalidOrder: true,
+    };
+  }
+
+  if (span === 0) {
+    const ended = nowMs >= endMs;
+    return {
+      progressPercent: ended ? 100 : 0,
+      daysLeftUntilEnd: ended ? 0 : daysLeftUntilEnd,
+      daysUntilStart,
+      ended,
+      notStarted: nowMs < startMs && !ended,
+      invalidOrder: false,
+    };
+  }
+
+  if (nowMs >= endMs) {
+    return {
+      progressPercent: 100,
+      daysLeftUntilEnd: 0,
+      daysUntilStart: 0,
+      ended: true,
+      notStarted: false,
+      invalidOrder: false,
+    };
+  }
+
+  if (nowMs <= startMs) {
+    return {
+      progressPercent: 0,
+      daysLeftUntilEnd,
+      daysUntilStart,
+      ended: false,
+      notStarted: true,
+      invalidOrder: false,
+    };
+  }
+
+  const progressPercent = Math.min(
+    100,
+    Math.max(0, Math.round(((nowMs - startMs) / span) * 100))
+  );
+
+  return {
+    progressPercent,
+    daysLeftUntilEnd,
+    daysUntilStart: 0,
+    ended: false,
+    notStarted: false,
+    invalidOrder: false,
+  };
+}
+
 interface CampaignDetailProps {
   campaign: Campaign;
 }
@@ -387,22 +474,18 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
   }));
 
   const today = new Date();
-  const startDate = new Date(campaign.startDate ?? campaign.createdAt);
-  const endDate = campaign.endDate ?? campaign.deadline
-    ? new Date((campaign.endDate ?? campaign.deadline)!)
-    : null;
-  const hasTimeline = !!(campaign.startDate ?? campaign.createdAt) && !!endDate;
-
-  let progressPercent = 0;
-  let daysLeft = 0;
-  if (hasTimeline && endDate) {
-    const total = endDate.getTime() - startDate.getTime();
-    const elapsed = today.getTime() - startDate.getTime();
-    progressPercent = total > 0
-      ? Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)))
-      : 0;
-    daysLeft = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / 86_400_000));
-  }
+  const timelineStartRaw = campaign.startDate ?? campaign.createdAt;
+  const timelineEndRaw = campaign.endDate ?? campaign.deadline;
+  const startDate =
+    timelineStartRaw != null && timelineStartRaw !== ""
+      ? new Date(timelineStartRaw)
+      : null;
+  const endDate =
+    timelineEndRaw != null && timelineEndRaw !== "" ? new Date(timelineEndRaw) : null;
+  const hasTimeline = isValidTimelineDate(startDate) && isValidTimelineDate(endDate);
+  const schedule =
+    hasTimeline && startDate && endDate ? deriveScheduleTimeline(startDate, endDate, today) : null;
+  const progressPercent = schedule?.progressPercent ?? 0;
 
   const activities = [
     ...insights.map((insight) => ({
@@ -513,7 +596,7 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
               </div>
             </div>
 
-            {hasTimeline && endDate && (
+            {hasTimeline && schedule && (
               <div className="mt-5 rounded-xl border border-border/70 bg-card/75 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground sm:shrink-0">
@@ -529,7 +612,21 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                     />
                   </div>
                   <span className="text-sm text-muted-foreground">
-                    {progressPercent}% complete · {daysLeft} days left
+                    {schedule.invalidOrder ? (
+                      <>End date is before start date — fix dates in Edit.</>
+                    ) : schedule.ended ? (
+                      <>100% complete · Schedule ended</>
+                    ) : schedule.notStarted ? (
+                      <>
+                        Not started · kicks off in {schedule.daysUntilStart} day
+                        {schedule.daysUntilStart !== 1 ? "s" : ""}
+                      </>
+                    ) : (
+                      <>
+                        {schedule.progressPercent}% complete · {schedule.daysLeftUntilEnd} day
+                        {schedule.daysLeftUntilEnd !== 1 ? "s" : ""} left
+                      </>
+                    )}
                   </span>
                 </div>
               </div>

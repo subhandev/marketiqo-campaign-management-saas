@@ -1,6 +1,6 @@
 import { prisma } from "@/server/db/client";
 import { openai } from "@/lib/openai";
-import { DEMO_CLIENTS } from "./demo-seed.data";
+import { createDemoClients } from "./demo-seed.data";
 
 type MetricRow = {
   impressions: number;
@@ -122,7 +122,9 @@ export async function seedDemoWorkspace(userId: string): Promise<void> {
     data: { name: "Demo Workspace", userId: user.id, isDemo: true },
   });
 
-  for (const clientData of DEMO_CLIENTS) {
+  const demoClients = createDemoClients(new Date());
+
+  for (const clientData of demoClients) {
     const { campaigns, ...clientFields } = clientData;
 
     const client = await prisma.client.create({
