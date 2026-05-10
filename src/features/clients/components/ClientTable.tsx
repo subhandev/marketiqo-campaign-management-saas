@@ -228,69 +228,70 @@ export function ClientTable({ clients, onDelete }: ClientTableProps) {
     </div>
     <div className="mt-3 space-y-2 sm:hidden">
       {clients.map((client) => (
-        <button
+        <div
           key={client.id}
-          type="button"
-          onClick={() => router.push(`/clients/${client.id}`)}
-          className="w-full rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/20"
+          className="relative w-full rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/20"
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                  {getInitials(client.name)}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{client.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {client.company ?? "—"}
-                  </p>
+          <button
+            type="button"
+            className="absolute inset-0 z-0 rounded-xl"
+            aria-label={`Open ${client.name}`}
+            onClick={() => router.push(`/clients/${client.id}`)}
+          />
+          <div className="relative z-[1] flex flex-col pointer-events-none">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                    {getInitials(client.name)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{client.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {client.company ?? "—"}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-            <span className="text-xs text-muted-foreground">
-              {client.lastActivityAt ? formatRelativeTime(client.lastActivityAt) : "—"}
-            </span>
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {client.atRiskCampaignsCount && client.atRiskCampaignsCount > 0 ? (
-              <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700">
-                {client.atRiskCampaignsCount} at risk
+              <span className="text-xs text-muted-foreground">
+                {client.lastActivityAt ? formatRelativeTime(client.lastActivityAt) : "—"}
               </span>
-            ) : (
-              <span className="text-[11px] text-muted-foreground">No risks</span>
-            )}
+            </div>
 
-            <span className="inline-flex items-center rounded-full border border-border bg-muted/35 px-2 py-0.5 text-[11px] font-medium text-foreground">
-              Active {client.activeCampaignsCount ?? 0}
-            </span>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {client.atRiskCampaignsCount && client.atRiskCampaignsCount > 0 ? (
+                <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700">
+                  {client.atRiskCampaignsCount} at risk
+                </span>
+              ) : (
+                <span className="text-[11px] text-muted-foreground">No risks</span>
+              )}
 
-            <span
-              className="inline-flex items-center rounded-full border border-border bg-muted/20 px-2 py-0.5 text-[11px] font-medium text-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-                router.push(`/campaigns?clientId=${client.id}`);
-              }}
-            >
-              Campaigns {client._count?.campaigns ?? 0}
-            </span>
+              <span className="inline-flex items-center rounded-full border border-border bg-muted/35 px-2 py-0.5 text-[11px] font-medium text-foreground">
+                Active {client.activeCampaignsCount ?? 0}
+              </span>
+
+              <button
+                type="button"
+                className="pointer-events-auto inline-flex cursor-pointer items-center rounded-full border border-border bg-muted/20 px-2 py-0.5 text-[11px] font-medium text-foreground"
+                onClick={() => router.push(`/campaigns?clientId=${client.id}`)}
+              >
+                Campaigns {client._count?.campaigns ?? 0}
+              </button>
+            </div>
+
+            <div className="mt-3 flex flex-col gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="pointer-events-auto justify-between"
+                onClick={() => router.push(`/campaigns/new?clientId=${client.id}`)}
+              >
+                Add campaign <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
-
-          <div className="mt-3 flex flex-col gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="justify-between"
-              onClick={(e) => {
-                e.stopPropagation();
-                router.push(`/campaigns/new?clientId=${client.id}`);
-              }}
-            >
-              Add campaign <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </button>
+        </div>
       ))}
     </div>
     <ConfirmModal

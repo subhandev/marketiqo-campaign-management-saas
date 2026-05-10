@@ -9,6 +9,7 @@ import {
   updateCampaign,
   deleteCampaign,
   createInsight,
+  replaceSummaryInsight,
   upsertMetric,
   getMetricsByCampaign,
   getInsightsByCampaign,
@@ -19,7 +20,22 @@ import type {
   CreateMetricInput,
   UpdateCampaignInput,
 } from "@/server/campaigns/campaigns.schemas";
-import { openai } from "@/lib/openai";
+import { openai, OPENAI_MODEL_QUICK } from "@/lib/openai";
+
+/** Regenerate replaces `summary`, but duplicates can exist historically; newest summary wins */
+function dedupeSummaryInsights<
+  T extends { type: string; createdAt: Date },
+>(insights: T[]): T[] {
+  let sawSummary = false;
+  return insights.filter((row) => {
+    if (row.type !== "summary") return true;
+    if (!sawSummary) {
+      sawSummary = true;
+      return true;
+    }
+    return false;
+  });
+}
 
 const STATUS_ORDER: Record<string, number> = {
   at_risk: 0,
@@ -150,14 +166,14 @@ export async function generateQuickInsight(campaignId: string, workspaceId: stri
   const prompt = `You are a marketing analyst. Given this campaign data, write a single sharp insight sentence (max 15 words) about its health or performance. Campaign: ${campaign.name}, Platform: ${campaign.platform}, Status: ${campaign.status}, Spend: ${metric?.spend ?? "N/A"}/${campaign.budget ?? "N/A"}, Clicks: ${metric?.clicks ?? "N/A"}, Conversions: ${metric?.conversions ?? "N/A"}. Respond with only the insight sentence, no preamble.`;
 
   const completion = await openai.chat.completions.create({
-    model: "llama-3.1-8b-instant",
+    model: OPENAI_MODEL_QUICK,
     messages: [{ role: "user", content: prompt }],
-    max_tokens: 60,
+    max_completion_tokens: 80,
     temperature: 0.7,
   });
 
   const content = completion.choices[0]?.message?.content?.trim() ?? "No insight available.";
-  await createInsight(campaignId, { type: "summary", content });
+  await replaceSummaryInsight(campaignId, { content });
 
   return { insight: content };
 }
@@ -165,7 +181,12 @@ export async function generateQuickInsight(campaignId: string, workspaceId: stri
 export async function getCampaign(id: string, workspaceId: string) {
   const campaign = await getCampaignById(id, workspaceId);
   if (!campaign) throw new Error("Campaign not found");
-  return { campaign };
+  return {
+    campaign: {
+      ...campaign,
+      insights: dedupeSummaryInsights(campaign.insights),
+    },
+  };
 }
 
 export async function addCampaign(workspaceId: string, data: CreateCampaignInput) {
@@ -187,7 +208,12 @@ export async function editCampaign(id: string, workspaceId: string, data: Update
   }
   const campaign = await updateCampaign(id, workspaceId, data);
   if (!campaign) throw new Error("Campaign not found");
-  return { campaign };
+  return {
+    campaign: {
+      ...campaign,
+      insights: dedupeSummaryInsights(campaign.insights),
+    },
+  };
 }
 
 export async function removeCampaign(id: string, workspaceId: string) {
@@ -222,5 +248,6 @@ export async function listInsights(campaignId: string, workspaceId: string) {
   const campaign = await getCampaignById(campaignId, workspaceId);
   if (!campaign) throw new Error("Campaign not found");
   const insights = await getInsightsByCampaign(campaignId, workspaceId);
-  return { insights };
+
+  return { insights: dedupeSummaryInsights(insights) };
 }

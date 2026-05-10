@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { getRealWorkspaceId, resolveWorkspaceId } from "@/server/workspace/resolve-workspace";
+import { resolveWorkspaceId } from "@/server/workspace/resolve-workspace";
 import {
   handleCreateMetric,
   handleListMetrics,
@@ -15,7 +15,7 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const workspaceId = await getRealWorkspaceId(userId);
+  const workspaceId = await resolveWorkspaceId(userId);
   if (!workspaceId) {
     return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
   }

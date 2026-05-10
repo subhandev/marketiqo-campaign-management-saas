@@ -120,7 +120,6 @@ export async function getCampaignById(id: string, workspaceId: string) {
       },
       insights: {
         orderBy: { createdAt: "desc" },
-        take: 5,
       },
       metrics: {
         orderBy: { date: "desc" },
@@ -190,6 +189,19 @@ export async function deleteCampaign(id: string, workspaceId: string) {
 export async function createInsight(campaignId: string, data: { type: string; content: string; score?: number }) {
   return prisma.insight.create({
     data: { campaignId, ...data },
+  });
+}
+
+/** Single live quick-insight slot per campaign — avoids stacking duplicates on regenerate */
+export async function replaceSummaryInsight(
+  campaignId: string,
+  data: { content: string; score?: number }
+) {
+  return prisma.$transaction(async (tx) => {
+    await tx.insight.deleteMany({ where: { campaignId, type: "summary" } });
+    return tx.insight.create({
+      data: { campaignId, type: "summary", content: data.content },
+    });
   });
 }
 

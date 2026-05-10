@@ -1,5 +1,11 @@
-import Groq from "groq-sdk";
+import OpenAI from "openai";
 
-export const openai = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
+/** JSON / multi-field insight generation (dashboard + demo seed batches) */
+export const OPENAI_MODEL_STRUCTURED = "gpt-4o-mini";
+
+/** Single short line (campaign quick insight / list refresh) */
+export const OPENAI_MODEL_QUICK = "gpt-4o-mini";
+
+export const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });

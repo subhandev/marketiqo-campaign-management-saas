@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/server/db/client";
-import { openai } from "@/lib/openai";
+import { openai, OPENAI_MODEL_STRUCTURED } from "@/lib/openai";
 import { resolveWorkspaceId } from "@/server/workspace/resolve-workspace";
 
 export async function POST(req: NextRequest) {
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: OPENAI_MODEL_STRUCTURED,
       messages: [
         {
           role: "system",
@@ -87,7 +87,7 @@ Rules:
 
     return NextResponse.json({ insights }, { status: 200 });
   } catch (error) {
-    console.error("Groq dashboard insights error:", error);
+    console.error("OpenAI dashboard insights error:", error);
     return NextResponse.json({ insights: fallback }, { status: 200 });
   }
 }
