@@ -1,17 +1,18 @@
 # Marketiqo
+ 
+> AI-powered SaaS that gives marketing agencies and consultants a single workspace to manage clients, run campaigns, and get real strategic insights — powered by AI, built for results. 
 
-An **AI-powered campaign tracker** to monitor marketing performance (clients → campaigns → daily metrics) and generate **actionable insights** at both campaign and portfolio (dashboard) levels.
-
-## What you can do
-
-- **Client CRM-lite**: manage clients inside a workspace.
-- **Campaign tracking**: create campaigns, update status, deadlines, budgets.
-- **Time-series metrics**: record daily performance (impressions/clicks/spend/conversions).
-- **AI insights**:
-  - quick “campaign health” insight (single sentence)
-  - portfolio-level dashboard brief (structured JSON with safe fallbacks)
-- **Demo onboarding**: seed a demo workspace with realistic data for exploration.
-
+---
+ 
+## Features
+ 
+- 🔐 **Auth & Multi-tenancy** — Clerk-powered sign-in (email + social providers); all data scoped per workspace
+- 👥 **Client Management** — Full client roster with status tracking, detail pages, and inline editing
+- 📣 **Campaign Lifecycle** — Create and manage campaigns from Planned → Active → Completed with budget, goals, and date tracking
+- 🤖 **AI Insights** — On-demand AI analysis (OpenAI by default, Groq optional) that generates context-aware recommendations per campaign
+- 📊 **Dashboard** — Live workspace metrics: total clients, active campaigns, at-risk flags, and completions at a glance
+- 🎨 **Production UI** — Consistent design system with soft status badges, validated forms (RHF + Zod), and Linear-quality polish throughout
+ 
 ## Tech stack
 
 - **Framework**: Next.js (App Router), React
