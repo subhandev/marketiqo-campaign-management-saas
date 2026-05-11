@@ -1,205 +1,120 @@
-Marketiqo
+# Marketiqo
 
-An AI-powered SaaS tool to analyze marketing campaign performance and generate actionable insights.
+An **AI-powered campaign tracker** to monitor marketing performance (clients → campaigns → daily metrics) and generate **actionable insights** at both campaign and portfolio (dashboard) levels.
 
----
+## What you can do
 
-## Tech Stack
+- **Client CRM-lite**: manage clients inside a workspace.
+- **Campaign tracking**: create campaigns, update status, deadlines, budgets.
+- **Time-series metrics**: record daily performance (impressions/clicks/spend/conversions).
+- **AI insights**:
+  - quick “campaign health” insight (single sentence)
+  - portfolio-level dashboard brief (structured JSON with safe fallbacks)
+- **Demo onboarding**: seed a demo workspace with realistic data for exploration.
 
-* Next.js (App Router)
-* Tailwind CSS
-* shadcn/ui
-* PostgreSQL (Neon recommended)
-* Prisma ORM
-* OpenAI API
-* Clerk (Authentication: Email, Google, Apple)
-* RHF
-* Zod
+## Tech stack
 
----
+- **Framework**: Next.js (App Router), React
+- **UI**: Tailwind CSS, shadcn/ui
+- **Auth**: Clerk
+- **DB**: PostgreSQL (Neon recommended), Prisma ORM
+- **AI**: Groq (default) or OpenAI
+- **Forms/validation**: React Hook Form, Zod
 
-## UI Components
+## Documentation
 
-This project uses **shadcn/ui** components located under `src/components/ui/`.
+- **Architecture**: `docs/ARCHITECTURE.md`
 
----
+## Getting started
 
-## Getting Started
+### Prerequisites
 
-### 1. Clone the repository
+- Node.js (recommended: current LTS)
+- PostgreSQL database (Neon works well)
+- A Clerk application (publishable + secret key)
+- An AI provider key (Groq default, or OpenAI)
 
-```bash
-git clone <your-repo-url>
-cd marketiqo
-```
-
----
-
-### 2. Install dependencies
+### Install
 
 ```bash
 npm install
 ```
 
----
+### Environment variables
 
-### 3. Setup environment variables
-
-Create a `.env.local` file in the root:
+Create `.env.local` in the repo root:
 
 ```env
-# Database (PostgreSQL - Neon or any provider)
+# Database
 DATABASE_URL=
 
-# Clerk Auth
+# Clerk (Auth)
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 
-# OpenAI
+# AI provider selection (optional)
+# Default is groq when omitted.
+AI_PROVIDER=groq
+
+# Optional model override (applies to both providers)
+# AI_CHAT_MODEL=
+
+# If AI_PROVIDER=groq (default)
+GROQ_API_KEY=
+
+# If AI_PROVIDER=openai
 OPENAI_API_KEY=
 ```
 
-> The app uses PostgreSQL. Neon is recommended for serverless setups, but any PostgreSQL provider will work.
+### Database setup (Prisma)
 
----
-
-### 4. Setup database (Prisma)
+For local/dev, you can push the schema:
 
 ```bash
 npx prisma generate
 npx prisma db push
 ```
 
-(Optional: open Prisma Studio)
+Optional:
 
 ```bash
 npx prisma studio
 ```
 
----
-
-### 5. Run the development server
+### Run the app
 
 ```bash
 npm run dev
 ```
 
-App will be available at:
+Then open `http://localhost:3000`.
 
-```
-http://localhost:3000
-```
+## Scripts
 
----
+- `npm run dev`: start Next.js dev server (Turbopack)
+- `npm run build`: `prisma generate` → `prisma migrate deploy` → `next build`
+- `npm run start`: start production server
+- `npm run lint`: run eslint
 
-## Features (Planned)
+## Repo structure (at a glance)
 
-* Campaign data ingestion (CSV / API)
-* AI-generated performance insights
-* Interactive dashboard
-* Scalable backend architecture
+- `src/app/`: Next.js routes, layouts, and API endpoints
+- `src/features/`: feature modules (UI, hooks, `/api/**` wrappers)
+- `src/server/`: backend domains (handler/service/repository), Prisma client, workspace logic
+- `prisma/schema.prisma`: data model
+- `docs/`: project documentation
 
----
+## Architecture (one-minute summary)
 
-## Architecture
+Marketiqo uses:
 
-The application follows a **feature-based frontend architecture** and a **layered backend architecture**, with clear separation between UI, business logic, and data access.
+- **Feature-based frontend**: `src/features/**`
+- **Thin API routes**: `src/app/api/**/route.ts` authenticate with Clerk, resolve workspace, then delegate
+- **Layered backend**: `handler → service → repository → Prisma`
+- **Workspace-scoped tenancy** with a demo workspace mode
 
-### Key Principles
-
-* `app/` → Routing (Next.js App Router)
-* `features/` → Frontend domain logic (UI, hooks, API calls)
-* `server/` → Backend domain logic (services, repositories)
-* `app/api/` → API layer (bridge between frontend & backend)
-* Route groups → Structure the app by product domains (`(auth)` and `(app)`)
-
----
-
-## Folder Structure
-
-```bash
-src/
-│
-├── app/                                # Next.js App Router
-│
-│   ├── (auth)/                         # 🔐 Authentication routes
-│   │   ├── sign-in/
-│   │   │   └── [[...sign-in]]/page.tsx
-│   │   ├── sign-up/
-│   │   │   └── [[...sign-up]]/page.tsx
-│   │   └── layout.tsx                  # Optional auth layout
-│   │
-│   ├── (app)/                          # 🚀 Main application (protected)
-│   │   ├── layout.tsx                  # Uses AppShell
-│   │   ├── page.tsx                    # Dashboard
-│   │   │
-│   │   ├── campaigns/
-│   │   │   └── page.tsx
-│   │   │
-│   │   └── settings/
-│   │       └── page.tsx
-│   │
-│   ├── api/
-│   │   └── campaigns/
-│   │       └── route.ts                # API endpoint
-│   │
-│   ├── layout.tsx                      # Root layout (ClerkProvider)
-│   └── globals.css
-│
-├── features/                           # Frontend domain modules
-│
-│   ├── app-shell/                      # App UI shell
-│   │   ├── AppShell.tsx                # Sidebar + header wrapper
-│   │   └── components/
-│   │       ├── Sidebar.tsx
-│   │       ├── Header.tsx
-│   │       └── SidebarToggle.tsx
-│   │
-│   └── campaigns/                      # Campaign feature (frontend)
-│       ├── components/
-│       │   └── CampaignTable.tsx
-│       │
-│       ├── api/
-│       │   └── campaigns.api.ts
-│       │
-│       ├── hooks/
-│       │   └── useCampaigns.ts
-│       │
-│       ├── types.ts
-│       └── index.ts
-│
-├── server/                             # Backend domain modules
-│   ├── db/
-│   │   └── client.ts                   # Prisma client
-│   │
-│   └── campaigns/
-│       ├── campaigns.repository.ts
-│       ├── campaigns.service.ts
-│       └── campaigns.handler.ts
-│
-├── components/                         # Shared UI (shadcn)
-│   └── ui/
-│       ├── button.tsx
-│       ├── input.tsx
-│       └── ...
-│
-├── lib/                                # Shared utilities
-│
-├── types/                              # Global shared types
-│
-└── middleware.ts                       # Auth protection (Clerk)
-```
-
----
-
-## Routing Strategy
-
-* `(auth)` → Public authentication routes (sign-in, sign-up)
-* `(app)` → Main product (protected via middleware)
-* Middleware ensures all non-auth routes require authentication
-
----
+For the full end-to-end architecture (including diagrams and extension guidance), see `docs/ARCHITECTURE.md`.
 
 ## Status
 
-🚧 Currently in active development (MVP phase)
+Active development (MVP).
