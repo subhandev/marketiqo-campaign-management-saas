@@ -20,7 +20,7 @@ import type {
   CreateMetricInput,
   UpdateCampaignInput,
 } from "@/server/campaigns/campaigns.schemas";
-import { openai, OPENAI_MODEL_QUICK } from "@/lib/openai";
+import { chatModel, getChatClient } from "@/lib/chat-llm";
 
 /** Regenerate replaces `summary`, but duplicates can exist historically; newest summary wins */
 function dedupeSummaryInsights<
@@ -165,8 +165,8 @@ export async function generateQuickInsight(campaignId: string, workspaceId: stri
   const metric = campaign.metrics[0];
   const prompt = `You are a marketing analyst. Given this campaign data, write a single sharp insight sentence (max 15 words) about its health or performance. Campaign: ${campaign.name}, Platform: ${campaign.platform}, Status: ${campaign.status}, Spend: ${metric?.spend ?? "N/A"}/${campaign.budget ?? "N/A"}, Clicks: ${metric?.clicks ?? "N/A"}, Conversions: ${metric?.conversions ?? "N/A"}. Respond with only the insight sentence, no preamble.`;
 
-  const completion = await openai.chat.completions.create({
-    model: OPENAI_MODEL_QUICK,
+  const completion = await getChatClient().chat.completions.create({
+    model: chatModel(),
     messages: [{ role: "user", content: prompt }],
     max_completion_tokens: 80,
     temperature: 0.7,

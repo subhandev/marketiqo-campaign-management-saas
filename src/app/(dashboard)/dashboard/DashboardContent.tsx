@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import {
@@ -14,6 +14,7 @@ import {
   Zap,
   ArrowRight,
   ArrowUpRight,
+  RefreshCw,
   TrendingUp,
   TrendingDown,
   ShoppingBag,
@@ -73,6 +74,27 @@ interface DashboardData {
   }[];
 }
 
+type PortfolioAiCategory = "performance" | "risk" | "budget" | "next_action";
+type PortfolioAiSeverity = "positive" | "info" | "warning" | "critical";
+
+interface PortfolioAiInsight {
+  category: PortfolioAiCategory;
+  severity: PortfolioAiSeverity;
+  headline: string;
+  insight: string;
+  recommendedAction: string;
+  campaignId?: string;
+  campaignName?: string;
+}
+
+interface PortfolioAiBrief {
+  briefTitle: string;
+  summary: string;
+  generatedAt: string;
+  source: "ai" | "fallback";
+  insights: PortfolioAiInsight[];
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function daysLabel(n: number | null): string {
@@ -80,6 +102,54 @@ function daysLabel(n: number | null): string {
   if (n < 0) return `Overdue by ${Math.abs(n)} day${Math.abs(n) !== 1 ? "s" : ""}`;
   if (n === 0) return "Due today";
   return `${n} day${n !== 1 ? "s" : ""} remaining`;
+}
+
+function riskPriorityLabel(daysRemaining: number | null): string {
+  if (daysRemaining === null) return "Needs schedule";
+  if (daysRemaining < 0) return "Critical priority";
+  if (daysRemaining <= 3) return "High priority";
+  return "Watch closely";
+}
+
+function riskSuggestedAction(daysRemaining: number | null): string {
+  if (daysRemaining === null) return "Set a deadline and define the next action.";
+  if (daysRemaining < 0) return "Escalate owner and reset the delivery plan.";
+  if (daysRemaining <= 3) return "Review pacing and unblock the next milestone.";
+  return "Confirm owner, timeline, and campaign pacing today.";
+}
+
+function deadlinePressureLabel(daysRemaining: number | null): string {
+  if (daysRemaining === null) return "No deadline";
+  if (daysRemaining < 0) return "Overdue";
+  if (daysRemaining === 0) return "Due today";
+  if (daysRemaining <= 3) return "High pressure";
+  return "Upcoming";
+}
+
+function generatedAtLabel(value: string | null): string {
+  if (!value) return "Awaiting AI brief";
+
+  const generatedAt = new Date(value).getTime();
+  if (Number.isNaN(generatedAt)) return "Recently generated";
+
+  const minutes = Math.max(0, Math.round((Date.now() - generatedAt) / 60000));
+  if (minutes < 1) return "Generated just now";
+  if (minutes === 1) return "Generated 1 minute ago";
+  if (minutes < 60) return `Generated ${minutes} minutes ago`;
+
+  const hours = Math.round(minutes / 60);
+  return hours === 1 ? "Generated 1 hour ago" : `Generated ${hours} hours ago`;
+}
+
+async function requestPortfolioAiBrief(): Promise<PortfolioAiBrief> {
+  const response = await fetch("/api/dashboard/insights", { method: "POST" });
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "Failed to generate dashboard insights.");
+  }
+
+  return payload as PortfolioAiBrief;
 }
 
 const OWNER_BG_POOL = [
@@ -271,21 +341,38 @@ function StatusBadge({ status }: { status: CampaignStatus }) {
   );
 }
 
-// ── Health segment color config ───────────────────────────────────────────────
+const AI_CATEGORY_CONFIG: Record<
+  PortfolioAiCategory,
+  { label: string; icon: React.ElementType; iconClass: string }
+> = {
+  performance: {
+    label: "Performance",
+    icon: Zap,
+    iconClass: "text-[hsl(var(--brand))]",
+  },
+  risk: {
+    label: "Risk",
+    icon: AlertTriangle,
+    iconClass: "text-[hsl(var(--warning))]",
+  },
+  budget: {
+    label: "Budget",
+    icon: DollarSign,
+    iconClass: "text-[hsl(var(--success))]",
+  },
+  next_action: {
+    label: "Next Action",
+    icon: ArrowUpRight,
+    iconClass: "text-[hsl(var(--info))]",
+  },
+};
 
-const HEALTH_SEGMENTS = [
-  { label: "Active",    key: "active" as const,    bar: "bg-[hsl(var(--success))]",              dot: "bg-[hsl(var(--success))]" },
-  { label: "At Risk",  key: "at_risk" as const,   bar: "bg-[hsl(var(--destructive))]",          dot: "bg-[hsl(var(--destructive))]" },
-  { label: "Completed",key: "completed" as const, bar: "bg-[hsl(var(--brand))]",                dot: "bg-[hsl(var(--brand))]" },
-  { label: "Planned",  key: "planned" as const,   bar: "bg-[hsl(var(--warning))]",              dot: "bg-[hsl(var(--warning))]" },
-  { label: "Archived", key: "archived" as const,  bar: "bg-[hsl(var(--muted-foreground)/0.25)]",dot: "bg-[hsl(var(--muted-foreground)/0.25)]" },
-];
-
-const INSIGHT_ICONS = [
-  { icon: Zap,           iconClass: "text-[hsl(var(--brand))]"   },
-  { icon: AlertTriangle, iconClass: "text-[hsl(var(--warning))]" },
-  { icon: DollarSign,    iconClass: "text-[hsl(var(--success))]" },
-];
+const AI_SEVERITY_CLASS: Record<PortfolioAiSeverity, string> = {
+  positive: "border-[hsl(var(--success)/0.25)] bg-[hsl(var(--success-soft))]",
+  info: "border-[hsl(var(--brand)/0.14)] bg-white/60",
+  warning: "border-[hsl(var(--warning)/0.35)] bg-[hsl(var(--warning-soft))]",
+  critical: "border-[hsl(var(--destructive)/0.35)] bg-[hsl(var(--destructive-soft))]",
+};
 
 // ── Dashboard content ─────────────────────────────────────────────────────────
 
@@ -298,8 +385,32 @@ export function DashboardContent() {
   const [loading, setLoading] = useState(true);
   // Captured when data loads so deadline diffs are stable across re-renders
   const [fetchedAt, setFetchedAt] = useState(0);
-  const [insights, setInsights] = useState<string[] | null>(null);
+  const [aiBrief, setAiBrief] = useState<PortfolioAiBrief | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(true);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
+  const aiRequestIdRef = useRef(0);
+
+  const loadAiBrief = useCallback(async () => {
+    const requestId = aiRequestIdRef.current + 1;
+    aiRequestIdRef.current = requestId;
+    setInsightsLoading(true);
+    setInsightsError(null);
+
+    try {
+      const brief = await requestPortfolioAiBrief();
+      if (aiRequestIdRef.current === requestId) {
+        setAiBrief(brief);
+      }
+    } catch {
+      if (aiRequestIdRef.current === requestId) {
+        setInsightsError("AI brief could not refresh. Showing the latest available readout.");
+      }
+    } finally {
+      if (aiRequestIdRef.current === requestId) {
+        setInsightsLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     fetch("/api/dashboard")
@@ -312,10 +423,26 @@ export function DashboardContent() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/dashboard/insights", { method: "POST" })
-      .then((r) => r.json())
-      .then((d) => setInsights(d.insights ?? null))
-      .finally(() => setInsightsLoading(false));
+    let active = true;
+    const requestId = aiRequestIdRef.current + 1;
+    aiRequestIdRef.current = requestId;
+
+    requestPortfolioAiBrief()
+      .then((brief) => {
+        if (active && aiRequestIdRef.current === requestId) setAiBrief(brief);
+      })
+      .catch(() => {
+        if (active && aiRequestIdRef.current === requestId) {
+          setInsightsError("AI brief could not refresh. Showing the latest available readout.");
+        }
+      })
+      .finally(() => {
+        if (active && aiRequestIdRef.current === requestId) setInsightsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (loading) return <DashboardLoadingSkeleton />;
@@ -328,7 +455,7 @@ export function DashboardContent() {
     );
   }
 
-  const { stats, health, recentCampaigns, atRiskCampaignsList, recentClients } = data;
+  const { stats, recentCampaigns, atRiskCampaignsList, recentClients } = data;
 
   // ── Stat cards ──────────────────────────────────────────────────────────────
 
@@ -428,6 +555,27 @@ export function DashboardContent() {
 
   const sev = SEVERITY_CONFIG[severity];
   const SevIcon = sev.IconComponent;
+  const closestAlert = alerts
+    .filter((alert) => alert.daysRemaining !== null)
+    .sort((a, b) => (a.daysRemaining ?? 999) - (b.daysRemaining ?? 999))[0];
+  const overdueCount = alerts.filter(
+    (alert) => alert.daysRemaining !== null && alert.daysRemaining < 0
+  ).length;
+  const dueSoonCount = alerts.filter(
+    (alert) => alert.daysRemaining !== null && alert.daysRemaining >= 0 && alert.daysRemaining <= 3
+  ).length;
+  const highestUrgencyLabel =
+    overdueCount > 0
+      ? "Critical"
+      : dueSoonCount > 0
+      ? "High"
+      : alerts.length > 0
+      ? "Medium"
+      : "Clear";
+  const deadlinePressure =
+    closestAlert?.daysRemaining !== undefined
+      ? deadlinePressureLabel(closestAlert.daysRemaining)
+      : "Monitoring";
 
   // ── Recent Campaigns ───────────────────────────────────────────────────────
 
@@ -452,17 +600,7 @@ export function DashboardContent() {
     ...getIndustryConfig(c.industry),
   }));
 
-  // ── Campaign Health ────────────────────────────────────────────────────────
-
-  const healthLegend = HEALTH_SEGMENTS.map((seg) => {
-    const value = health[seg.key];
-    return {
-      ...seg,
-      value,
-      pct: `${health.total > 0 ? Math.round((value / health.total) * 100) : 0}%`,
-      count: value,
-    };
-  });
+  const aiGeneratedLabel = generatedAtLabel(aiBrief?.generatedAt ?? null);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -473,10 +611,10 @@ export function DashboardContent() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-[hsl(var(--foreground))]">
-            Welcome back, {firstName} 👋
+            Welcome back, {firstName}
           </h1>
           <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">
-            Here&apos;s what&apos;s happening across your campaigns today.
+            Your AI campaign analyst is watching portfolio health, spend, and next actions.
           </p>
         </div>
       </div>
@@ -523,34 +661,68 @@ export function DashboardContent() {
         {/* Needs Attention — dynamic severity */}
         <div
           className={cn(
-            "rounded-xl p-5 shadow-card border",
+            "rounded-xl p-5 shadow-card border flex flex-col",
             sev.cardBg,
             sev.cardBorder,
             "lg:col-span-2"
           )}
         >
-          <div className="flex items-center gap-2">
-            <div
-              className={cn(
-                "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
-                sev.iconBg
-              )}
-            >
-              <SevIcon size={15} className={sev.iconColor} />
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <div
+                className={cn(
+                  "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+                  sev.iconBg
+                )}
+              >
+                <SevIcon size={15} className={sev.iconColor} />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className={cn("text-sm font-semibold", sev.titleColor)}>
+                    Needs Attention
+                  </p>
+                  <span className="rounded-full border border-[hsl(var(--warning)/0.22)] bg-white/70 px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--warning-foreground))]">
+                    AI triaged
+                  </span>
+                </div>
+                <p className={cn("text-xs mt-0.5", sev.subtitleColor)}>
+                  {alerts.length} campaign{alerts.length !== 1 ? "s" : ""} require
+                  {alerts.length === 1 ? "s" : ""} action
+                </p>
+              </div>
             </div>
-            <div>
-              <p className={cn("text-sm font-semibold", sev.titleColor)}>
-                Needs Attention
+          </div>
+
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="rounded-lg border border-[hsl(var(--border)/0.8)] bg-white/65 px-3 py-2">
+              <p className="text-[9px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                Urgency
               </p>
-              <p className={cn("text-xs", sev.subtitleColor)}>
-                {alerts.length} campaign{alerts.length !== 1 ? "s" : ""} require
-                {alerts.length === 1 ? "s" : ""} action
+              <p className="mt-1 text-sm font-semibold text-[hsl(var(--foreground))]">
+                {highestUrgencyLabel}
+              </p>
+            </div>
+            <div className="rounded-lg border border-[hsl(var(--border)/0.8)] bg-white/65 px-3 py-2">
+              <p className="text-[9px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                Deadline
+              </p>
+              <p className="mt-1 text-sm font-semibold text-[hsl(var(--foreground))]">
+                {deadlinePressure}
+              </p>
+            </div>
+            <div className="rounded-lg border border-[hsl(var(--border)/0.8)] bg-white/65 px-3 py-2">
+              <p className="text-[9px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                Queue
+              </p>
+              <p className="mt-1 text-sm font-semibold tabular-nums text-[hsl(var(--foreground))]">
+                {alerts.length}
               </p>
             </div>
           </div>
 
           {alerts.length === 0 ? (
-            <div className="flex flex-col items-center text-center gap-2 py-6 mt-3">
+            <div className="flex flex-1 flex-col items-center justify-center text-center gap-2 py-8 mt-3 rounded-lg border border-dashed border-[hsl(var(--border))] bg-white/45">
               <CheckCircle2 size={28} className="text-[hsl(var(--success))]" />
               <p className="text-sm font-medium text-[hsl(var(--foreground))]">
                 All campaigns on track
@@ -558,34 +730,67 @@ export function DashboardContent() {
               <p className="text-xs text-[hsl(var(--muted-foreground))]">
                 No campaigns need attention right now.
               </p>
+              <p className="mt-1 max-w-xs text-xs text-[hsl(var(--muted-foreground))]">
+                AI will flag deadline, pacing, and status risks here.
+              </p>
             </div>
           ) : (
-            alerts.map((alert) => (
-              <div
-                key={alert.id}
-                className={cn(
-                  "rounded-lg border p-3 mt-3",
-                  sev.innerCardBg,
-                  sev.innerCardBorder
-                )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-sm text-[hsl(var(--foreground))] truncate">
-                    {alert.name}
-                  </span>
-                  <StatusBadge status="at_risk" />
-                </div>
-                <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
-                  {alert.client} · {alert.platform}
-                </p>
-                <div className="flex items-center gap-1 mt-1.5">
-                  <Clock size={11} className="text-[hsl(var(--muted-foreground))]" />
-                  <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                    {daysLabel(alert.daysRemaining)}
-                  </span>
+            <div className="mt-3 space-y-3">
+              {alerts.map((alert) => (
+                <button
+                  type="button"
+                  key={alert.id}
+                  onClick={() => router.push(`/campaigns/${alert.id}`)}
+                  className={cn(
+                    "w-full rounded-lg border p-3 text-left transition-colors hover:bg-white/80",
+                    sev.innerCardBg,
+                    sev.innerCardBorder
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm text-[hsl(var(--foreground))] truncate">
+                        {alert.name}
+                      </p>
+                      <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
+                        {alert.client} · {alert.platform}
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-[hsl(var(--warning)/0.25)] bg-[hsl(var(--warning-soft))] px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--warning-foreground))] shrink-0">
+                      {riskPriorityLabel(alert.daysRemaining)}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <Clock size={11} className="text-[hsl(var(--muted-foreground))]" />
+                    <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                      {daysLabel(alert.daysRemaining)}
+                    </span>
+                  </div>
+                  <div className="mt-2 rounded-md border border-[hsl(var(--border)/0.7)] bg-white/65 px-2.5 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                      Suggested action
+                    </p>
+                    <p className="mt-1 text-xs text-[hsl(var(--foreground))]">
+                      {riskSuggestedAction(alert.daysRemaining)}
+                    </p>
+                  </div>
+                </button>
+              ))}
+
+              <div className="rounded-lg border border-[hsl(var(--warning)/0.2)] bg-white/55 p-3">
+                <div className="flex items-start gap-2">
+                  <Sparkles size={13} className="mt-0.5 shrink-0 text-[hsl(var(--warning))]" />
+                  <div>
+                    <p className="text-xs font-semibold text-[hsl(var(--foreground))]">
+                      AI recommendation
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
+                      Start with the closest deadline, then compare spend and conversions before changing budgets.
+                    </p>
+                  </div>
                 </div>
               </div>
-            ))
+            </div>
           )}
 
           <button
@@ -598,68 +803,155 @@ export function DashboardContent() {
               sev.buttonText
             )}
           >
-            Review campaign
+            Review triage queue
             <ArrowUpRight size={13} />
           </button>
         </div>
 
-        {/* AI Summary */}
+        {/* Portfolio AI Brief */}
         <div className="bg-[hsl(var(--brand-soft))] border border-[hsl(var(--brand)/0.2)] rounded-xl p-5 shadow-card lg:col-span-3">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-ai flex items-center justify-center shrink-0">
-              <Sparkles size={14} className="text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-[hsl(var(--accent-foreground))]">
-                AI Summary
-              </p>
-              <p
-                className="text-xs mt-0.5"
-                style={{ color: "hsl(var(--brand) / 0.7)" }}
-              >
-                {insightsLoading ? "Generating insights…" : "Updated just now"}
-              </p>
-            </div>
-            <span className="ml-auto bg-white/70 text-[hsl(var(--brand))] border border-[hsl(var(--brand)/0.2)] text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0">
-              BETA
-            </span>
-          </div>
-
-          <div className="space-y-2 mt-3">
-            {insightsLoading ? (
-              <div className="animate-pulse space-y-2">
-                <div className="h-4 bg-muted/50 rounded w-full" />
-                <div className="h-4 bg-muted/50 rounded w-5/6" />
-                <div className="h-4 bg-muted/50 rounded w-4/6" />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-2">
+              <div className="w-7 h-7 rounded-lg bg-gradient-ai flex items-center justify-center shrink-0">
+                <Sparkles size={14} className="text-white" />
               </div>
-            ) : (
-              (insights ?? []).map((text, i) => {
-                const { icon: Icon, iconClass } = INSIGHT_ICONS[i % INSIGHT_ICONS.length];
-                return (
-                  <div
-                    key={i}
-                    className="flex items-start gap-2.5 p-2.5 rounded-lg bg-white/60 border border-[hsl(var(--brand)/0.12)] backdrop-blur-sm"
-                  >
-                    <Icon size={13} className={cn("mt-0.5 shrink-0", iconClass)} />
-                    <span
-                      className="text-sm"
-                      style={{ color: "hsl(var(--accent-foreground) / 0.9)" }}
-                    >
-                      {text}
-                    </span>
-                  </div>
-                );
-              })
-            )}
+              <div>
+                <p className="text-sm font-semibold text-[hsl(var(--accent-foreground))]">
+                  Portfolio AI Brief
+                </p>
+                <p
+                  className="text-xs mt-0.5"
+                  style={{ color: "hsl(var(--brand) / 0.72)" }}
+                >
+                  {insightsLoading
+                    ? "Analyzing campaigns, spend, deadlines, and saved insights..."
+                    : aiGeneratedLabel}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={loadAiBrief}
+              disabled={insightsLoading}
+              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[hsl(var(--brand)/0.22)] bg-white/70 px-3 text-xs font-medium text-[hsl(var(--brand))] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCw
+                size={12}
+                className={cn(insightsLoading && "animate-spin")}
+                aria-hidden
+              />
+              {insightsLoading ? "Generating" : "Regenerate"}
+            </button>
           </div>
 
           <div
-            className="flex items-center justify-end gap-1 mt-3 text-sm font-medium cursor-pointer hover:underline"
-            style={{ color: "hsl(var(--brand))" }}
-            onClick={() => router.push("/campaigns")}
+            className="mt-3 rounded-lg border border-[hsl(var(--brand)/0.12)] bg-white/45 p-3"
+            style={{ color: "hsl(var(--accent-foreground) / 0.86)" }}
           >
-            View full AI report
-            <ArrowRight size={13} />
+            <p className="text-sm font-medium">
+              {aiBrief?.summary ??
+                "AI will summarize portfolio performance once campaign signals are available."}
+            </p>
+            <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+              Based on recent campaigns, deadlines, spend, metrics, and saved campaign insights.
+            </p>
+          </div>
+
+          {insightsError && (
+            <div className="mt-3 rounded-lg border border-[hsl(var(--warning)/0.25)] bg-[hsl(var(--warning-soft))] px-3 py-2 text-xs text-[hsl(var(--warning-foreground))]">
+              {insightsError}
+            </div>
+          )}
+
+          <div className="space-y-2 mt-3">
+            {insightsLoading && !aiBrief ? (
+              <div className="animate-pulse space-y-2">
+                <div className="h-16 bg-white/50 rounded-lg" />
+                <div className="h-16 bg-white/50 rounded-lg" />
+                <div className="h-16 bg-white/50 rounded-lg" />
+              </div>
+            ) : aiBrief?.insights.length ? (
+              aiBrief.insights.map((insight, i) => {
+                const cfg = AI_CATEGORY_CONFIG[insight.category];
+                const Icon = cfg.icon;
+                const targetHref = insight.campaignId
+                  ? `/campaigns/${insight.campaignId}`
+                  : "/campaigns";
+
+                return (
+                  <button
+                    type="button"
+                    key={`${insight.category}-${insight.headline}-${i}`}
+                    onClick={() => router.push(targetHref)}
+                    className={cn(
+                      "w-full rounded-lg border p-3 text-left backdrop-blur-sm transition-colors hover:bg-white/80",
+                      AI_SEVERITY_CLASS[insight.severity]
+                    )}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <Icon size={14} className={cn("mt-0.5 shrink-0", cfg.iconClass)} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                            {cfg.label}
+                          </span>
+                          {insight.campaignName && (
+                            <span className="truncate text-[10px] text-[hsl(var(--muted-foreground))]">
+                              {insight.campaignName}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-sm font-semibold text-[hsl(var(--foreground))]">
+                          {insight.headline}
+                        </p>
+                        <p className="mt-1 text-sm text-[hsl(var(--accent-foreground)/0.88)]">
+                          {insight.insight}
+                        </p>
+                        <p className="mt-2 text-xs font-medium text-[hsl(var(--brand))]">
+                          Recommended: {insight.recommendedAction}
+                        </p>
+                      </div>
+                      <ArrowRight
+                        size={13}
+                        className="mt-1 shrink-0 text-[hsl(var(--muted-foreground))]"
+                      />
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="rounded-lg border border-dashed border-[hsl(var(--brand)/0.18)] bg-white/45 p-5 text-center">
+                <Sparkles className="mx-auto h-7 w-7 text-[hsl(var(--brand)/0.55)]" />
+                <p className="mt-3 text-sm font-medium text-[hsl(var(--foreground))]">
+                  No AI brief yet
+                </p>
+                <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+                  Add campaigns and metrics, then regenerate the portfolio AI brief.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <span className="bg-white/70 text-[hsl(var(--brand))] border border-[hsl(var(--brand)/0.2)] text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0">
+                AI POWERED
+              </span>
+              {aiBrief?.source === "fallback" && (
+                <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                  Using safe fallback signals
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              className="flex items-center justify-end gap-1 text-sm font-medium hover:underline"
+              style={{ color: "hsl(var(--brand))" }}
+              onClick={() => router.push("/campaigns")}
+            >
+              Review AI-prioritized campaigns
+              <ArrowRight size={13} />
+            </button>
           </div>
         </div>
       </div>
@@ -810,68 +1102,6 @@ export function DashboardContent() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* ── Row 4 — Campaign Health ── */}
-      <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] shadow-card p-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm font-semibold text-[hsl(var(--foreground))]">
-              Campaign Health
-            </p>
-            <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
-              Distribution across {health.total} campaign{health.total !== 1 ? "s" : ""}
-            </p>
-          </div>
-          <span className="text-2xl font-bold text-[hsl(var(--foreground))]">
-            {health.total}
-          </span>
-        </div>
-
-        {health.total === 0 ? (
-          <p className="text-sm text-[hsl(var(--muted-foreground))] mt-4 text-center py-4">
-            No campaigns yet.
-          </p>
-        ) : (
-          <>
-            {/* Segmented bar — flex values driven by real counts */}
-            <div className="flex w-full h-2 rounded-full overflow-hidden mt-4 gap-px">
-              {healthLegend
-                .filter((item) => item.value > 0)
-                .map((item) => (
-                  <div
-                    key={item.label}
-                    className={item.bar}
-                    style={{ flex: item.value }}
-                  />
-                ))}
-            </div>
-
-            {/* Legend */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mt-4">
-              {healthLegend.map((item) => (
-                <div key={item.label} className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={cn("w-2.5 h-2.5 rounded-full shrink-0", item.dot)}
-                    />
-                    <span className="text-sm text-[hsl(var(--muted-foreground))]">
-                      {item.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                      {item.pct}
-                    </span>
-                    <span className="text-sm font-semibold text-[hsl(var(--foreground))] ml-2">
-                      {item.count}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
       </div>
 
     </div>
