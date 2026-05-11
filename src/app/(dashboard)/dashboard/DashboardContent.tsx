@@ -604,7 +604,7 @@ export function DashboardContent() {
       </div>
 
       {/* ── Row 2 — Needs Attention + AI Summary ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
         {/* Needs Attention — dynamic severity */}
         <div

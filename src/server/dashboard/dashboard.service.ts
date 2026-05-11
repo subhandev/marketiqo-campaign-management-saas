@@ -26,6 +26,12 @@ const CATEGORIES: PortfolioAiCategory[] = ["performance", "risk", "budget", "nex
 const SEVERITIES: PortfolioAiSeverity[] = ["positive", "info", "warning", "critical"];
 /** Portfolio AI Brief body: one summary strip plus this many insight cards on the dashboard. */
 const MAX_PORTFOLIO_INSIGHTS = 3;
+/** Post-parse string caps (UTF-16 length); keep LLM prompt word limits within these. */
+const BRIEF_TITLE_MAX = 114;
+const BRIEF_SUMMARY_MAX = 408;
+const INSIGHT_HEADLINE_MAX = 114;
+const INSIGHT_BODY_MAX = 398;
+const INSIGHT_ACTION_MAX = 322;
 
 function clampText(value: unknown, fallback: string, maxLength: number): string {
   if (typeof value !== "string") return fallback;
@@ -212,12 +218,12 @@ function parseAiBrief(raw: string, fallback: PortfolioAiBrief): PortfolioAiBrief
     return {
       category: normalizeCategory(candidate.category, fallbackInsight.category),
       severity: normalizeSeverity(candidate.severity, fallbackInsight.severity),
-      headline: clampText(candidate.headline, fallbackInsight.headline, 48),
-      insight: clampText(candidate.insight, fallbackInsight.insight, 150),
+      headline: clampText(candidate.headline, fallbackInsight.headline, INSIGHT_HEADLINE_MAX),
+      insight: clampText(candidate.insight, fallbackInsight.insight, INSIGHT_BODY_MAX),
       recommendedAction: clampText(
         candidate.recommendedAction,
         fallbackInsight.recommendedAction,
-        120
+        INSIGHT_ACTION_MAX
       ),
       campaignId: typeof candidate.campaignId === "string" ? candidate.campaignId : undefined,
       campaignName:
@@ -227,8 +233,8 @@ function parseAiBrief(raw: string, fallback: PortfolioAiBrief): PortfolioAiBrief
   const insights = consistentInsights(normalizedInsights, fallback);
 
   return {
-    briefTitle: clampText(parsed.briefTitle, fallback.briefTitle, 48),
-    summary: clampText(parsed.summary, fallback.summary, 160),
+    briefTitle: clampText(parsed.briefTitle, fallback.briefTitle, BRIEF_TITLE_MAX),
+    summary: clampText(parsed.summary, fallback.summary, BRIEF_SUMMARY_MAX),
     generatedAt: fallback.generatedAt,
     source: "ai",
     insights,
@@ -269,7 +275,7 @@ Rules:
 - Prefer saved campaign insights when they are relevant.
 - Categories must be one of: performance, risk, budget, next_action.
 - Severity must be one of: positive, info, warning, critical.
-- Keep headline under 6 words, insight under 24 words, recommendedAction under 18 words.
+- Keep headline under 22 words, insight under 62 words, recommendedAction under 48 words.
 - Return this exact shape:
 {
   "briefTitle": "short title",
