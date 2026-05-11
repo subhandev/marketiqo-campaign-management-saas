@@ -24,6 +24,8 @@ export type PortfolioAiBrief = {
 
 const CATEGORIES: PortfolioAiCategory[] = ["performance", "risk", "budget", "next_action"];
 const SEVERITIES: PortfolioAiSeverity[] = ["positive", "info", "warning", "critical"];
+/** Portfolio AI Brief body: one summary strip plus this many insight cards on the dashboard. */
+const MAX_PORTFOLIO_INSIGHTS = 3;
 
 function clampText(value: unknown, fallback: string, maxLength: number): string {
   if (typeof value !== "string") return fallback;
@@ -66,7 +68,7 @@ function consistentInsights(insights: PortfolioAiInsight[], fallback: PortfolioA
   }
 
   for (const fallbackInsight of fallback.insights) {
-    if (unique.length >= 3) break;
+    if (unique.length >= MAX_PORTFOLIO_INSIGHTS) break;
     if (seenCategories.has(fallbackInsight.category)) continue;
 
     seenCategories.add(fallbackInsight.category);
@@ -75,8 +77,8 @@ function consistentInsights(insights: PortfolioAiInsight[], fallback: PortfolioA
   }
 
   return unique
-    .slice(0, 4)
-    .sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category));
+    .sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category))
+    .slice(0, MAX_PORTFOLIO_INSIGHTS);
 }
 
 type DashboardAiContext = Awaited<ReturnType<typeof getDashboardAiContext>>;
@@ -203,7 +205,7 @@ function parseAiBrief(raw: string, fallback: PortfolioAiBrief): PortfolioAiBrief
     return fallback;
   }
 
-  const normalizedInsights = parsed.insights.slice(0, 4).map((item, index) => {
+  const normalizedInsights = parsed.insights.slice(0, CATEGORIES.length).map((item, index) => {
     const candidate = item as Partial<PortfolioAiInsight>;
     const fallbackInsight = fallback.insights[index % fallback.insights.length];
 
@@ -260,7 +262,7 @@ export async function generatePortfolioAiBrief(workspaceId: string): Promise<Por
           content: `You are a senior marketing analyst powering an AI-first campaign dashboard.
 Return a concise portfolio intelligence brief as JSON only.
 Rules:
-- Return 3 or 4 insights.
+- Return exactly 3 insights (no more, no fewer).
 - Do not repeat a category, headline, or recommendation.
 - Use only the data provided. Do not invent campaigns, clients, metrics, or results.
 - Make every insight actionable and specific.
