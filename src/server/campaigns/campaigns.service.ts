@@ -1,7 +1,6 @@
 import {
   getCampaignsByWorkspace,
   getCampaignListItems,
-  getCampaignWithLatestMetric,
   findManyByWorkspace,
   getCampaignById,
   getClientByIdInWorkspace,
@@ -9,7 +8,8 @@ import {
   updateCampaign,
   deleteCampaign,
   createInsight,
-  replaceSummaryInsight,
+  getCampaignForInsightReport,
+  replaceInsightsForCampaign,
   upsertMetric,
   getMetricsByCampaign,
   getInsightsByCampaign,
@@ -20,7 +20,7 @@ import type {
   CreateMetricInput,
   UpdateCampaignInput,
 } from "@/server/campaigns/campaigns.schemas";
-import { chatModel, getChatClient } from "@/lib/chat-llm";
+import { chatModel, getChatClient, resolveAiProvider } from "@/lib/chat-llm";
 
 /** Regenerate replaces `summary`, but duplicates can exist historically; newest summary wins */
 function dedupeSummaryInsights<
@@ -158,24 +158,135 @@ export async function listCampaignItems(workspaceId: string) {
   return { campaigns, total: campaigns.length };
 }
 
+const INSIGHT_TYPES = new Set(["performance", "recommendation", "risk"]);
+
+function normalizeInsightType(raw: unknown): string {
+  const v = typeof raw === "string" ? raw.toLowerCase() : "recommendation";
+  return INSIGHT_TYPES.has(v) ? v : "recommendation";
+}
+
+function clampInsightScore(raw: unknown): number | null {
+  if (typeof raw !== "number" || Number.isNaN(raw)) return null;
+  return Math.min(1, Math.max(0, raw));
+}
+
+function stripJsonFence(text: string) {
+  let t = text.trim();
+  if (t.startsWith("```")) {
+    t = t.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/u, "");
+  }
+  return t.trim();
+}
+
+function parseInsightReportJson(raw: string): Array<{
+  type: string;
+  title: string;
+  body: string;
+  score: number | null;
+}> {
+  const trimmed = stripJsonFence(raw);
+  const parsed = JSON.parse(trimmed) as { insights?: unknown };
+  const list = Array.isArray(parsed.insights) ? parsed.insights : [];
+  const rows: Array<{ type: string; title: string; body: string; score: number | null }> = [];
+
+  for (const item of list) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const title = typeof o.title === "string" ? o.title.trim() : "";
+    const content = typeof o.content === "string" ? o.content.trim() : "";
+    if (!title && !content) continue;
+    rows.push({
+      type: normalizeInsightType(o.type),
+      title: title || "Insight",
+      body: content,
+      score: clampInsightScore(o.score),
+    });
+    if (rows.length >= 3) break;
+  }
+
+  return rows;
+}
+
 export async function generateQuickInsight(campaignId: string, workspaceId: string) {
-  const campaign = await getCampaignWithLatestMetric(campaignId, workspaceId);
+  const campaign = await getCampaignForInsightReport(campaignId, workspaceId);
   if (!campaign) throw new Error("Campaign not found");
+  if (campaign.metrics.length === 0) throw new Error("No metrics available");
 
-  const metric = campaign.metrics[0];
-  const prompt = `You are a marketing analyst. Given this campaign data, write a single sharp insight sentence (max 15 words) about its health or performance. Campaign: ${campaign.name}, Platform: ${campaign.platform}, Status: ${campaign.status}, Spend: ${metric?.spend ?? "N/A"}/${campaign.budget ?? "N/A"}, Clicks: ${metric?.clicks ?? "N/A"}, Conversions: ${metric?.conversions ?? "N/A"}. Respond with only the insight sentence, no preamble.`;
+  const metricsContext =
+    campaign.metrics.length > 0
+      ? `Recent metrics (newest first): ${campaign.metrics
+          .map(
+            (m) =>
+              `Impressions: ${m.impressions}, Clicks: ${m.clicks}, Spend: $${m.spend}, Conversions: ${m.conversions ?? 0}`
+          )
+          .join(" | ")}`
+      : "No metrics data available yet.";
 
-  const completion = await getChatClient().chat.completions.create({
+  const prompt = `You are an expert marketing campaign analyst. Analyze the following campaign and provide actionable insights.
+
+Campaign: ${campaign.name}
+Client: ${campaign.client?.name ?? "Unknown"}
+Industry: ${campaign.client?.industry ?? "Unknown"}
+Platform: ${campaign.platform}
+Status: ${campaign.status}
+Goal: ${campaign.goal ?? "Not specified"}
+Start Date: ${campaign.startDate?.toISOString() ?? "Not set"}
+End Date: ${campaign.endDate?.toISOString() ?? "Not set"}
+Deadline: ${campaign.deadline?.toISOString() ?? "Not set"}
+Description: ${campaign.description ?? "Not provided"}
+${metricsContext}
+
+Provide exactly 3 insights in the following JSON format only, no extra text or markdown:
+{
+  "insights": [
+    {
+      "type": "performance" | "recommendation" | "risk",
+      "title": "short title max 6 words",
+      "content": "2-3 sentence actionable insight",
+      "score": 0.0 to 1.0
+    }
+  ]
+}`;
+
+  const client = getChatClient();
+  const baseArgs = {
     model: chatModel(),
     messages: [{ role: "user", content: prompt }],
-    max_completion_tokens: 80,
+    max_completion_tokens: 900,
     temperature: 0.7,
-  });
+  } as const;
 
-  const content = completion.choices[0]?.message?.content?.trim() ?? "No insight available.";
-  await replaceSummaryInsight(campaignId, { content });
+  const completion =
+    resolveAiProvider() === "openai"
+      ? await client.chat.completions.create({
+          ...baseArgs,
+          response_format: { type: "json_object" },
+        })
+      : await client.chat.completions.create(baseArgs);
 
-  return { insight: content };
+  const raw = completion.choices[0]?.message?.content?.trim() ?? "";
+  let parsedRows: Array<{ type: string; title: string; body: string; score: number | null }>;
+  try {
+    parsedRows = parseInsightReportJson(raw);
+  } catch {
+    throw new Error("Failed to parse insights");
+  }
+
+  if (parsedRows.length === 0) throw new Error("Failed to parse insights");
+
+  const persistRows = parsedRows.map((row) => ({
+    type: row.type,
+    content: row.body ? `${row.title}: ${row.body}` : row.title,
+    score: row.score,
+  }));
+
+  await replaceInsightsForCampaign(campaignId, persistRows);
+
+  const primary = parsedRows[0];
+  const previewBody = primary.body.length > 140 ? `${primary.body.slice(0, 137)}...` : primary.body;
+  const insight = previewBody ? `${primary.title}: ${previewBody}` : primary.title;
+
+  return { insight };
 }
 
 export async function getCampaign(id: string, workspaceId: string) {

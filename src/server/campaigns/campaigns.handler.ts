@@ -42,6 +42,10 @@ export async function handleGenerateQuickInsight(campaignId: string, workspaceId
   } catch (error) {
     if (error instanceof Error && error.message === "Campaign not found")
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    if (error instanceof Error && error.message === "No metrics available")
+      return NextResponse.json({ error: "No metrics available" }, { status: 400 });
+    if (error instanceof Error && error.message === "Failed to parse insights")
+      return NextResponse.json({ error: "Failed to generate insights" }, { status: 502 });
     return NextResponse.json({ error: "Failed to generate insight" }, { status: 500 });
   }
 }
