@@ -1,5 +1,5 @@
 import { prisma } from "@/server/db/client";
-import { openai, OPENAI_MODEL_STRUCTURED } from "@/lib/openai";
+import { chatModel, getChatClient } from "@/lib/chat-llm";
 import { createDemoClients } from "./demo-seed.data";
 
 type MetricRow = {
@@ -77,8 +77,8 @@ Provide exactly 3 insights as JSON only, no extra text:
   ];
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: OPENAI_MODEL_STRUCTURED,
+    const completion = await getChatClient().chat.completions.create({
+      model: chatModel(),
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       temperature: 0.7,

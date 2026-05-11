@@ -45,7 +45,7 @@ npm install
 
 ### 3. Setup environment variables
 
-Create a `.env` file in the root:
+Create a `.env.local` file in the root:
 
 ```env
 # Database (PostgreSQL - Neon or any provider)
