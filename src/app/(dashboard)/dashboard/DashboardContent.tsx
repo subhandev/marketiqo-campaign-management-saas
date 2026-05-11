@@ -413,13 +413,40 @@ export function DashboardContent() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/dashboard")
-      .then((r) => r.json())
-      .then((d: DashboardData) => {
+    let active = true;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/dashboard");
+        if (!res.ok) {
+          if (res.status === 401) {
+            if (active) setData(null);
+            return;
+          }
+          throw new Error(`Request failed: ${res.status}`);
+        }
+
+        const contentType = res.headers.get("content-type") ?? "";
+        if (!contentType.includes("application/json")) {
+          throw new Error("Unexpected response type");
+        }
+
+        const d = (await res.json()) as DashboardData;
+        if (!active) return;
         setData(d);
         setFetchedAt(Date.now());
-      })
-      .finally(() => setLoading(false));
+      } catch {
+        if (!active) return;
+        setData(null);
+      } finally {
+        if (!active) return;
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
