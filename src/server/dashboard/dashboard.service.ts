@@ -24,6 +24,14 @@ export type PortfolioAiBrief = {
 
 const CATEGORIES: PortfolioAiCategory[] = ["performance", "risk", "budget", "next_action"];
 const SEVERITIES: PortfolioAiSeverity[] = ["positive", "info", "warning", "critical"];
+/** Portfolio AI Brief body: one summary strip plus this many insight cards on the dashboard. */
+const MAX_PORTFOLIO_INSIGHTS = 3;
+/** Post-parse string caps (UTF-16 length); keep LLM prompt word limits within these. */
+const BRIEF_TITLE_MAX = 114;
+const BRIEF_SUMMARY_MAX = 408;
+const INSIGHT_HEADLINE_MAX = 114;
+const INSIGHT_BODY_MAX = 398;
+const INSIGHT_ACTION_MAX = 322;
 
 function clampText(value: unknown, fallback: string, maxLength: number): string {
   if (typeof value !== "string") return fallback;
@@ -66,7 +74,7 @@ function consistentInsights(insights: PortfolioAiInsight[], fallback: PortfolioA
   }
 
   for (const fallbackInsight of fallback.insights) {
-    if (unique.length >= 3) break;
+    if (unique.length >= MAX_PORTFOLIO_INSIGHTS) break;
     if (seenCategories.has(fallbackInsight.category)) continue;
 
     seenCategories.add(fallbackInsight.category);
@@ -75,8 +83,8 @@ function consistentInsights(insights: PortfolioAiInsight[], fallback: PortfolioA
   }
 
   return unique
-    .slice(0, 4)
-    .sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category));
+    .sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category))
+    .slice(0, MAX_PORTFOLIO_INSIGHTS);
 }
 
 type DashboardAiContext = Awaited<ReturnType<typeof getDashboardAiContext>>;
@@ -203,19 +211,19 @@ function parseAiBrief(raw: string, fallback: PortfolioAiBrief): PortfolioAiBrief
     return fallback;
   }
 
-  const normalizedInsights = parsed.insights.slice(0, 4).map((item, index) => {
+  const normalizedInsights = parsed.insights.slice(0, CATEGORIES.length).map((item, index) => {
     const candidate = item as Partial<PortfolioAiInsight>;
     const fallbackInsight = fallback.insights[index % fallback.insights.length];
 
     return {
       category: normalizeCategory(candidate.category, fallbackInsight.category),
       severity: normalizeSeverity(candidate.severity, fallbackInsight.severity),
-      headline: clampText(candidate.headline, fallbackInsight.headline, 48),
-      insight: clampText(candidate.insight, fallbackInsight.insight, 150),
+      headline: clampText(candidate.headline, fallbackInsight.headline, INSIGHT_HEADLINE_MAX),
+      insight: clampText(candidate.insight, fallbackInsight.insight, INSIGHT_BODY_MAX),
       recommendedAction: clampText(
         candidate.recommendedAction,
         fallbackInsight.recommendedAction,
-        120
+        INSIGHT_ACTION_MAX
       ),
       campaignId: typeof candidate.campaignId === "string" ? candidate.campaignId : undefined,
       campaignName:
@@ -225,8 +233,8 @@ function parseAiBrief(raw: string, fallback: PortfolioAiBrief): PortfolioAiBrief
   const insights = consistentInsights(normalizedInsights, fallback);
 
   return {
-    briefTitle: clampText(parsed.briefTitle, fallback.briefTitle, 48),
-    summary: clampText(parsed.summary, fallback.summary, 160),
+    briefTitle: clampText(parsed.briefTitle, fallback.briefTitle, BRIEF_TITLE_MAX),
+    summary: clampText(parsed.summary, fallback.summary, BRIEF_SUMMARY_MAX),
     generatedAt: fallback.generatedAt,
     source: "ai",
     insights,
@@ -260,14 +268,14 @@ export async function generatePortfolioAiBrief(workspaceId: string): Promise<Por
           content: `You are a senior marketing analyst powering an AI-first campaign dashboard.
 Return a concise portfolio intelligence brief as JSON only.
 Rules:
-- Return 3 or 4 insights.
+- Return exactly 3 insights (no more, no fewer).
 - Do not repeat a category, headline, or recommendation.
 - Use only the data provided. Do not invent campaigns, clients, metrics, or results.
 - Make every insight actionable and specific.
 - Prefer saved campaign insights when they are relevant.
 - Categories must be one of: performance, risk, budget, next_action.
 - Severity must be one of: positive, info, warning, critical.
-- Keep headline under 6 words, insight under 24 words, recommendedAction under 18 words.
+- Keep headline under 22 words, insight under 62 words, recommendedAction under 48 words.
 - Return this exact shape:
 {
   "briefTitle": "short title",

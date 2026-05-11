@@ -18,20 +18,24 @@ export default async function DashboardLayout({
 
   if (!user) return null
 
-  // 🔥 Sync user with DB
-  let dbUser = await prisma.user.findUnique({
+  const email = user.emailAddresses[0]?.emailAddress
+  if (!email) return null
+
+  // Upsert avoids P2002 when parallel requests both pass the initial findUnique check.
+  const dbUser = await prisma.user.upsert({
     where: { clerkUserId: user.id },
+    create: {
+      clerkUserId: user.id,
+      email,
+    },
+    update: { email },
   })
 
-  if (!dbUser) {
-    dbUser = await prisma.user.create({
-      data: {
-        clerkUserId: user.id,
-        email: user.emailAddresses[0].emailAddress,
-      },
-    })
+  const workspaceCount = await prisma.workspace.count({
+    where: { userId: dbUser.id },
+  })
 
-    // Create default workspace
+  if (workspaceCount === 0) {
     await prisma.workspace.create({
       data: {
         name: `${user.firstName || 'My'} Workspace`,

@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/server/db/client";
+import { demoPortfolioClientCount } from "@/server/demo/demo-seed.data";
 import { DemoOnboarding } from "@/features/demo/components/DemoOnboarding";
 import { DashboardContent } from "./DashboardContent";
 
@@ -18,10 +19,29 @@ export default async function DashboardPage() {
           })
         : null;
 
-      demoInitialState =
-        !demoWorkspace         ? "needs_seed" :
-        demoWorkspace.seededAt ? "seeded"     :
-                                 "needs_seed";
+      if (!demoWorkspace) {
+        demoInitialState = "needs_seed";
+      } else {
+        const expectedClients = demoPortfolioClientCount(new Date());
+        const clientCount = await prisma.client.count({
+          where: { workspaceId: demoWorkspace.id },
+        });
+
+        // Match /api/demo/status “demo ready”: full portfolio OR seededAt marker.
+        let seededAt = demoWorkspace.seededAt;
+        if (!seededAt && clientCount >= expectedClients) {
+          await prisma.workspace.update({
+            where: { id: demoWorkspace.id },
+            data: { seededAt: new Date() },
+          });
+          seededAt = new Date();
+        }
+
+        const demoReady =
+          !!seededAt || clientCount >= expectedClients;
+
+        demoInitialState = demoReady ? "seeded" : "needs_seed";
+      }
     }
   }
 

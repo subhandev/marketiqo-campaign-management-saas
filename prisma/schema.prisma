@@ -12,6 +12,10 @@ model User {
   email          String    @unique
   createdAt      DateTime  @default(now())
   demoClearedAt  DateTime?
+  /** Soft lock: only one /api/demo/seed may run; pair with demoSeedLockStartedAt for stale detection. */
+  demoSeedLeaseUntil DateTime?
+  /** When the current seed lock was taken; used to steal the lock if a dev server died without releasing. */
+  demoSeedLockStartedAt DateTime?
 
   workspaces Workspace[]
 }

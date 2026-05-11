@@ -1,6 +1,7 @@
 import { prisma } from "@/server/db/client";
 import { chatModel, getChatClient } from "@/lib/chat-llm";
-import { createDemoClients } from "./demo-seed.data";
+import { clearWorkspaceData, deleteWorkspace } from "@/server/settings/settings.repository";
+import { createDemoClients, demoPortfolioClientCount } from "./demo-seed.data";
 
 type MetricRow = {
   impressions: number;
@@ -10,7 +11,37 @@ type MetricRow = {
   date: Date;
 };
 
-async function generateInsightsForCampaign(campaign: {
+/**
+ * Demo onboarding should finish reliably; chaining many LLM calls leaves the Neon connection
+ * idle long enough to drop mid-seed. Set DEMO_SEED_INSIGHT_LLM=true to generate AI insights
+ * during seed (slower, higher flake risk locally).
+ */
+async function persistDemoInsights(campaignId: string): Promise<void> {
+  await prisma.insight.createMany({
+    data: [
+      {
+        campaignId,
+        type: "performance",
+        content: "Campaign is currently running within expected parameters.",
+        score: 0.6,
+      },
+      {
+        campaignId,
+        type: "recommendation",
+        content: "Monitor CTR trends weekly and adjust bidding strategy as needed.",
+        score: 0.7,
+      },
+      {
+        campaignId,
+        type: "risk",
+        content: "Ensure budget pacing is reviewed before the campaign deadline.",
+        score: 0.5,
+      },
+    ],
+  });
+}
+
+async function generateInsightsWithLlmForDemo(campaign: {
   id: string;
   name: string;
   platform: string;
@@ -55,27 +86,6 @@ Provide exactly 3 insights as JSON only, no extra text:
 }
 `;
 
-  const fallbackInsights = [
-    {
-      campaignId: campaign.id,
-      type: "performance",
-      content: "Campaign is currently running within expected parameters.",
-      score: 0.6,
-    },
-    {
-      campaignId: campaign.id,
-      type: "recommendation",
-      content: "Monitor CTR trends weekly and adjust bidding strategy as needed.",
-      score: 0.7,
-    },
-    {
-      campaignId: campaign.id,
-      type: "risk",
-      content: "Ensure budget pacing is reviewed before the campaign deadline.",
-      score: 0.5,
-    },
-  ];
-
   try {
     const completion = await getChatClient().chat.completions.create({
       model: chatModel(),
@@ -92,7 +102,7 @@ Provide exactly 3 insights as JSON only, no extra text:
         : [];
 
     if (insights.length === 0) {
-      await prisma.insight.createMany({ data: fallbackInsights });
+      await persistDemoInsights(campaign.id);
       return;
     }
 
@@ -105,7 +115,7 @@ Provide exactly 3 insights as JSON only, no extra text:
       })),
     });
   } catch {
-    await prisma.insight.createMany({ data: fallbackInsights });
+    await persistDemoInsights(campaign.id);
   }
 }
 
@@ -113,16 +123,31 @@ export async function seedDemoWorkspace(userId: string): Promise<void> {
   const user = await prisma.user.findUnique({ where: { clerkUserId: userId } });
   if (!user) throw new Error("User not found");
 
+  const expectedClients = demoPortfolioClientCount(new Date());
+
   const existing = await prisma.workspace.findFirst({
     where: { userId: user.id, isDemo: true },
   });
-  if (existing) return;
+  // A demo workspace row can exist without any clients if a previous seed failed early, or CLIs
+  // raced. Previously we returned immediately and the UI polled forever (`seeded: false`).
+  if (existing) {
+    const clientCount = await prisma.client.count({
+      where: { workspaceId: existing.id },
+    });
+    const complete = !!existing.seededAt && clientCount >= expectedClients;
+    if (complete) return;
+
+    await clearWorkspaceData(existing.id);
+    await deleteWorkspace(existing.id);
+  }
 
   const demoWorkspace = await prisma.workspace.create({
     data: { name: "Demo Workspace", userId: user.id, isDemo: true },
   });
 
   const demoClients = createDemoClients(new Date());
+
+  const useInsightLlm = process.env.DEMO_SEED_INSIGHT_LLM === "true";
 
   for (const clientData of demoClients) {
     const { campaigns, ...clientFields } = clientData;
@@ -145,15 +170,19 @@ export async function seedDemoWorkspace(userId: string): Promise<void> {
       }
 
       if (campaignData.status !== "planned") {
-        await generateInsightsForCampaign({
-          id: campaign.id,
-          name: campaign.name,
-          platform: campaign.platform,
-          status: campaign.status,
-          goal: campaign.goal ?? null,
-          metrics,
-          client: { name: client.name, industry: client.industry ?? null },
-        });
+        if (useInsightLlm) {
+          await generateInsightsWithLlmForDemo({
+            id: campaign.id,
+            name: campaign.name,
+            platform: campaign.platform,
+            status: campaign.status,
+            goal: campaign.goal ?? null,
+            metrics,
+            client: { name: client.name, industry: client.industry ?? null },
+          });
+        } else {
+          await persistDemoInsights(campaign.id);
+        }
       }
     }
   }

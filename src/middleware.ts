@@ -17,6 +17,11 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (!isPublicRoute(req) && !userId) {
+    // API routes should not redirect (redirect bodies are empty → `response.json()` crashes).
+    // Let API handlers return proper JSON 401s instead.
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     return NextResponse.redirect(new URL('/sign-in', req.url))
   }
 })

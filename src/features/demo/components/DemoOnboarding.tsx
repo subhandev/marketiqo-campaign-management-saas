@@ -17,41 +17,93 @@ export function DemoOnboarding({
     initialState === "seeded"     ? "ready"   : "idle"
   );
   const overlayCompleteRef = useRef<(() => void) | null>(null);
+  /** Strict Mode mounts twice; skip only the duplicate initial POST, not the polling interval teardown/setup. */
+  const initialSeedKickoffSentRef = useRef(false);
 
-  // Fire seed + poll for completion
+  // Fire seed + poll for completion (run once per needs_seed session; do not tie to `state`
+  // or the effect can restart and overlapping intervals amplify /api/demo/status calls).
   useEffect(() => {
-    if (state !== "seeding") return;
+    if (initialState !== "needs_seed") return;
 
     let stopped = false;
-    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let pollAttempts = 0;
+    const MAX_POLL_ATTEMPTS = 100; // ~4–5 min then give up (seed is synchronous; this catches stuck DB/API)
 
-    fetch("/api/demo/seed", { method: "POST" }).catch(() => {});
+    const lastSeedAtRef = { current: 0 };
+    const fullSeedPostsRef = { current: 0 };
+    const seedInFlightRef = { current: false };
+    const MAX_CLIENT_SEED_POSTS = 6;
+    /** Longer than typical failed seed + server lease so we do not stack redundant POSTs. */
+    const RESEED_COOLDOWN_MS = 60_000;
 
-    pollInterval = setInterval(async () => {
+    const triggerSeed = () => {
+      if (stopped || seedInFlightRef.current) return;
+      if (fullSeedPostsRef.current >= MAX_CLIENT_SEED_POSTS) return;
+      seedInFlightRef.current = true;
+      lastSeedAtRef.current = Date.now();
+      fetch("/api/demo/seed", { method: "POST" })
+        .then(async (res) => {
+          if (res.status === 202) return;
+          fullSeedPostsRef.current += 1;
+          try {
+            await res.json();
+          } catch {
+            // ignore empty / non-JSON body
+          }
+        })
+        .finally(() => {
+          seedInFlightRef.current = false;
+        });
+    };
+
+    if (!initialSeedKickoffSentRef.current) {
+      initialSeedKickoffSentRef.current = true;
+      triggerSeed();
+    }
+
+    const pollInterval = setInterval(async () => {
       if (stopped) return;
+      pollAttempts += 1;
+      if (pollAttempts > MAX_POLL_ATTEMPTS) {
+        clearInterval(pollInterval);
+        stopped = true;
+        setState("idle");
+        return;
+      }
       try {
         const res = await fetch("/api/demo/status");
         const data = await res.json();
         if (data.cleared) {
-          clearInterval(pollInterval!);
+          clearInterval(pollInterval);
           stopped = true;
           setState("idle");
           return;
         }
         if (data.seeded) {
-          clearInterval(pollInterval!);
+          clearInterval(pollInterval);
           stopped = true;
           setState("completing");
           overlayCompleteRef.current?.();
+          return;
         }
-      } catch {}
-    }, 2500);
+        if (
+          !data.cleared &&
+          !data.seeded &&
+          fullSeedPostsRef.current < MAX_CLIENT_SEED_POSTS &&
+          Date.now() - lastSeedAtRef.current >= RESEED_COOLDOWN_MS
+        ) {
+          triggerSeed();
+        }
+      } catch {
+        // ignore transient errors
+      }
+    }, 3000);
 
     return () => {
       stopped = true;
-      if (pollInterval) clearInterval(pollInterval);
+      clearInterval(pollInterval);
     };
-  }, [state]);
+  }, [initialState]);
 
   if (state === "idle") return null;
 

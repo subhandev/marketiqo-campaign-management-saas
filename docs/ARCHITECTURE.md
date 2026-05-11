@@ -28,6 +28,46 @@ The dashboard aggregates campaign + metric signals and can request AI-generated 
 
 ## Repository structure (key directories)
 
+## Project structure (at a glance)
+
+This is the “where does what live?” map. It’s intentionally high-level so it stays accurate as the codebase grows.
+
+```text
+docs/
+  ARCHITECTURE.md            # End-to-end system architecture (this doc)
+
+prisma/
+  schema.prisma              # Data model (User/Workspace/Client/Campaign/Metric/Insight)
+  migrations/                # Prisma migrations (deployed in CI/build)
+
+src/
+  app/                       # Next.js App Router (pages/layouts + API routes)
+    (auth)/                  # Public auth pages (Clerk)
+    (dashboard)/             # Authenticated product pages
+    api/                     # HTTP endpoints (thin: auth + workspace + delegate)
+
+  features/                  # Frontend domain modules (UI + hooks + api wrappers)
+    app-shell/               # Sidebar/header/layout chrome
+    clients/                 # Client screens, hooks, /api wrappers, schemas/types
+    campaigns/               # Campaign screens, hooks, /api wrappers, schemas/types
+    dashboard/               # Dashboard UI components
+    demo/                    # Demo onboarding UI
+    settings/                # Settings UI (e.g. data reset)
+
+  server/                    # Backend domain logic (handler → service → repository)
+    db/                      # Prisma singleton client
+    workspace/               # Workspace resolution helpers (demo vs real)
+    clients/                 # Client domain handler/service/repository
+    campaigns/               # Campaign domain handler/service/repository (+ schemas)
+    dashboard/               # Dashboard domain handler/service/repository
+    settings/                # Data reset / workspace maintenance logic
+    demo/                    # Demo seed service + curated demo data
+
+  components/ui/             # Shared shadcn/ui primitives
+  lib/                       # Shared utilities (e.g. AI client wrapper)
+  middleware.ts              # Clerk auth middleware + redirects
+```
+
 ### Frontend (Next.js App Router)
 
 - `src/app/`

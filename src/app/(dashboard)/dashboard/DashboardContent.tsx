@@ -28,72 +28,14 @@ import {
 import { cn } from "@/lib/utils";
 import { CampaignStatus } from "@/features/campaigns/types";
 import { DashboardLoadingSkeleton } from "@/features/dashboard/components/DashboardLoadingSkeleton";
+import {
+  fetchDashboard,
+  requestPortfolioAiBrief,
+} from "@/features/dashboard/api/dashboard.api";
+import type { DashboardData, PortfolioAiBrief } from "@/features/dashboard/types";
 import { formatCurrency } from "@/shared/format/numbers";
 import { formatDateShort } from "@/shared/format/dates";
 import { getInitials } from "@/shared/format/strings";
-
-// ── API response type ─────────────────────────────────────────────────────────
-
-interface DashboardData {
-  stats: {
-    totalClients: number;
-    activeCampaigns: number;
-    atRiskCampaigns: number;
-    completedCampaigns: number;
-    totalSpend: number;
-  };
-  health: {
-    active: number;
-    at_risk: number;
-    completed: number;
-    planned: number;
-    archived: number;
-    total: number;
-  };
-  recentCampaigns: {
-    id: string;
-    name: string;
-    platform: string;
-    status: CampaignStatus;
-    deadline: string | null;
-    client: { id: string; name: string; industry: string | null } | null;
-  }[];
-  atRiskCampaignsList: {
-    id: string;
-    name: string;
-    platform: string;
-    deadline: string | null;
-    client: { id: string; name: string; industry: string | null } | null;
-  }[];
-  recentClients: {
-    id: string;
-    name: string;
-    industry: string | null;
-    status: string;
-    campaignCount: number;
-  }[];
-}
-
-type PortfolioAiCategory = "performance" | "risk" | "budget" | "next_action";
-type PortfolioAiSeverity = "positive" | "info" | "warning" | "critical";
-
-interface PortfolioAiInsight {
-  category: PortfolioAiCategory;
-  severity: PortfolioAiSeverity;
-  headline: string;
-  insight: string;
-  recommendedAction: string;
-  campaignId?: string;
-  campaignName?: string;
-}
-
-interface PortfolioAiBrief {
-  briefTitle: string;
-  summary: string;
-  generatedAt: string;
-  source: "ai" | "fallback";
-  insights: PortfolioAiInsight[];
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -139,17 +81,6 @@ function generatedAtLabel(value: string | null): string {
 
   const hours = Math.round(minutes / 60);
   return hours === 1 ? "Generated 1 hour ago" : `Generated ${hours} hours ago`;
-}
-
-async function requestPortfolioAiBrief(): Promise<PortfolioAiBrief> {
-  const response = await fetch("/api/dashboard/insights", { method: "POST" });
-  const payload = await response.json();
-
-  if (!response.ok) {
-    throw new Error(payload?.error ?? "Failed to generate dashboard insights.");
-  }
-
-  return payload as PortfolioAiBrief;
 }
 
 const OWNER_BG_POOL = [
@@ -413,13 +344,30 @@ export function DashboardContent() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/dashboard")
-      .then((r) => r.json())
-      .then((d: DashboardData) => {
+    let active = true;
+
+    (async () => {
+      try {
+        const d = await fetchDashboard();
+        if (!active) return;
+        if (d === null) {
+          setData(null);
+          return;
+        }
         setData(d);
         setFetchedAt(Date.now());
-      })
-      .finally(() => setLoading(false));
+      } catch {
+        if (!active) return;
+        setData(null);
+      } finally {
+        if (!active) return;
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
