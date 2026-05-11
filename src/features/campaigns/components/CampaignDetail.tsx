@@ -689,11 +689,15 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
             <div className="rounded-xl border border-border bg-card p-5 shadow-sm ring-1 ring-border/80">
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    AI Insights
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      AI Insights
+                    </p>
+                  </div>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Prioritized signals from recent campaign movement.
+                    Performance, risk, and recommendations from recent metrics
+                    {insights.length > 0 ? ` · ${insights.length} active` : ""}.
                   </p>
                 </div>
                 <Button
@@ -735,8 +739,17 @@ export function CampaignDetail({ campaign }: CampaignDetailProps) {
                   <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50" />
                   <p className="mt-3 text-sm font-medium">No insights yet</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Add metrics data, then generate AI insights for this campaign.
+                    Add metrics data, then generate an AI report for this campaign.
                   </p>
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="mt-2 h-auto p-0 text-xs font-medium"
+                    onClick={handleGenerateInsights}
+                    disabled={generating}
+                  >
+                    Generate insights →
+                  </Button>
                 </div>
               )}
             </div>

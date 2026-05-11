@@ -108,6 +108,25 @@ export async function getCampaignWithLatestMetric(campaignId: string, workspaceI
   });
 }
 
+/** Full context for AI insight report (recent metrics + client). */
+export async function getCampaignForInsightReport(campaignId: string, workspaceId: string) {
+  return prisma.campaign.findFirst({
+    where: {
+      id: campaignId,
+      client: { workspaceId },
+    },
+    include: {
+      client: {
+        select: { name: true, industry: true },
+      },
+      metrics: {
+        orderBy: { date: "desc" },
+        take: 5,
+      },
+    },
+  });
+}
+
 export async function getCampaignById(id: string, workspaceId: string) {
   return prisma.campaign.findFirst({
     where: {
@@ -201,6 +220,29 @@ export async function replaceSummaryInsight(
     await tx.insight.deleteMany({ where: { campaignId, type: "summary" } });
     return tx.insight.create({
       data: { campaignId, type: "summary", content: data.content },
+    });
+  });
+}
+
+/** Replace all campaign insights with a fresh AI report batch. */
+export async function replaceInsightsForCampaign(
+  campaignId: string,
+  rows: { type: string; content: string; score?: number | null }[]
+) {
+  return prisma.$transaction(async (tx) => {
+    await tx.insight.deleteMany({ where: { campaignId } });
+    if (rows.length === 0) return [];
+    await tx.insight.createMany({
+      data: rows.map((r) => ({
+        campaignId,
+        type: r.type,
+        content: r.content,
+        score: r.score ?? null,
+      })),
+    });
+    return tx.insight.findMany({
+      where: { campaignId },
+      orderBy: { createdAt: "desc" },
     });
   });
 }
