@@ -302,3 +302,8 @@ function buildDemoClients(asOf: Date) {
 export function createDemoClients(asOf: Date = new Date()) {
   return buildDemoClients(asOf);
 }
+
+/** Matches demo seed completeness checks (portfolio size). */
+export function demoPortfolioClientCount(asOf: Date = new Date()): number {
+  return createDemoClients(asOf).length;
+}

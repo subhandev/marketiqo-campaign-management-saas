@@ -21,3 +21,12 @@ export const prisma =
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma
 }
+
+/** After Neon/adapter drops (“not queryable”), the singleton must disconnect before reuse. */
+export async function disconnectPrismaClientSafe(): Promise<void> {
+  try {
+    await prisma.$disconnect()
+  } catch {
+    /* already closed */
+  }
+}
