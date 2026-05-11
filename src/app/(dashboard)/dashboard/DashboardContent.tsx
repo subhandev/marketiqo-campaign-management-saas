@@ -32,7 +32,12 @@ import {
   fetchDashboard,
   requestPortfolioAiBrief,
 } from "@/features/dashboard/api/dashboard.api";
-import type { DashboardData, PortfolioAiBrief } from "@/features/dashboard/types";
+import type {
+  DashboardData,
+  PortfolioAiBrief,
+  PortfolioAiCategory,
+  PortfolioAiSeverity,
+} from "@/features/dashboard/types";
 import { formatCurrency } from "@/shared/format/numbers";
 import { formatDateShort } from "@/shared/format/dates";
 import { getInitials } from "@/shared/format/strings";
