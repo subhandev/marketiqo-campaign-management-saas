@@ -79,7 +79,7 @@ export function Header({
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+              variant="destructive"
               onClick={() => signOut(() => router.push("/sign-in"))}
             >
               Logout

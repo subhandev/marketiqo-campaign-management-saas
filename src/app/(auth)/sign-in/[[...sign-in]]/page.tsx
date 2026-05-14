@@ -309,10 +309,12 @@ export default function SignInPage() {
       </div>
 
       {/* Trust note */}
-      <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-xs text-zinc-400">
-        <Lock className="h-3 w-3 shrink-0" />
-        Your data is secure. We never share your campaign data.
-      </p>
+      <div className="mt-5 flex justify-center">
+        <div className="inline-flex max-w-xs items-start gap-1.5 text-left text-xs text-zinc-400">
+          <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
+          <span>Your data is secure. We never share your campaign data.</span>
+        </div>
+      </div>
     </div>
   );
 }

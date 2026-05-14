@@ -173,7 +173,7 @@ export default function AuthLayout({
   return (
     <div className="relative min-h-screen grid lg:grid-cols-2">
       <BrandPanel />
-      <div className="relative z-10 flex items-center justify-center bg-[#f8f9fb] p-8 pointer-events-auto">
+      <div className="relative z-10 flex min-h-0 w-full items-center justify-center bg-[#f8f9fb] p-8 pointer-events-auto">
         {children}
       </div>
     </div>
