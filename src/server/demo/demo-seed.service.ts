@@ -17,24 +17,28 @@ type MetricRow = {
  * during seed (slower, higher flake risk locally).
  */
 async function persistDemoInsights(campaignId: string): Promise<void> {
+  // Match `InsightCard` + `generateQuickInsight`: one string `title: body` (first colon splits).
   await prisma.insight.createMany({
     data: [
       {
         campaignId,
         type: "performance",
-        content: "Campaign is currently running within expected parameters.",
+        content:
+          "Running within targets: Campaign pacing looks healthy versus recent daily metrics; keep comparing spend, clicks, and conversions to plan.",
         score: 0.6,
       },
       {
         campaignId,
         type: "recommendation",
-        content: "Monitor CTR trends weekly and adjust bidding strategy as needed.",
+        content:
+          "Review CTR weekly: Track click-through trends and adjust bids or creative rotation so efficiency stays aligned with the stated goal.",
         score: 0.7,
       },
       {
         campaignId,
         type: "risk",
-        content: "Ensure budget pacing is reviewed before the campaign deadline.",
+        content:
+          "Budget pacing before deadline: Confirm spend is on track for the remaining runway so you do not underspend or hit a hard cap late.",
         score: 0.5,
       },
     ],
@@ -107,12 +111,19 @@ Provide exactly 3 insights as JSON only, no extra text:
     }
 
     await prisma.insight.createMany({
-      data: insights.map((i) => ({
-        campaignId: campaign.id,
-        type: i.type,
-        content: `${i.title}: ${i.content}`,
-        score: i.score,
-      })),
+      data: insights.map((i) => {
+        const title = typeof i.title === "string" ? i.title.trim() || "Insight" : "Insight";
+        const body =
+          typeof i.content === "string" && i.content.trim() !== ""
+            ? i.content.trim()
+            : "Review Performance Trends with your latest metrics, then use Regenerate insights for a tailored pass.";
+        return {
+          campaignId: campaign.id,
+          type: i.type,
+          content: `${title}: ${body}`,
+          score: i.score,
+        };
+      }),
     });
   } catch {
     await persistDemoInsights(campaign.id);
